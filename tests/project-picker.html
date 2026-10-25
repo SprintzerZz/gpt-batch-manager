@@ -3,6 +3,7 @@
 <title>Project picker smoke test</title>
 <nav id="sidebar">
   <div id="chat-row" data-sidebar-item="true" draggable="true"><a href="/c/test-chat">Test chat</a></div>
+  <div><span>项目</span></div>
   <div id="project-row" data-sidebar-item="true"><a href="/g/g-p-test-project">Test project</a></div>
 </nav>
 <div id="result">PENDING</div>
@@ -11,6 +12,14 @@
   const projectRow = document.getElementById('project-row');
   if (empty) projectRow.remove();
   else {
+    if (new URLSearchParams(location.search).has('folder')) {
+      projectRow.removeAttribute('data-sidebar-item');
+      projectRow.className = 'group/folder-row';
+      projectRow.innerHTML = '<div class="flex min-w-0 items-center gap-2 rounded-md py-1"><span class="viewport"><span data-marquee-content="true">Test project</span></span></div>';
+    }
+    if (new URLSearchParams(location.search).has('button')) {
+      projectRow.innerHTML = '<button type="button"><svg width="16" height="16"><path d="M1 1h14v14H1z"></path></svg> Test project</button>';
+    }
     projectRow.addEventListener('dragover', (event) => event.preventDefault());
     projectRow.addEventListener('drop', (event) => {
       event.preventDefault();

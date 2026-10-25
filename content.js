@@ -333,7 +333,7 @@
     const link = findConversationLink(item.id) || item.link;
     if (!link || !link.isConnected) return { ok: false, reason: '对话未显示在侧栏' };
     const source = link.closest('[draggable="true"]');
-    const target = sidebarProjects().find((item) => item.pathname === project.pathname)?.link ||
+    const target = sidebarProjects().find((item) => item.key === project.key)?.link ||
       (project.link.isConnected ? project.link : null);
     if (source && target) {
       const row = conversationRow(link);
@@ -366,15 +366,48 @@
   }
 
   function sidebarProjects() {
+    const folderRows = [...document.querySelectorAll('[class~="group/folder-row"]')]
+      .flatMap((row, index) => {
+        const title = row.querySelector('[data-marquee-content="true"]');
+        const name = title?.textContent?.replace(/\s+/g, ' ').trim();
+        return name ? [{ name, link: row, key: `folder:${index}:${name}` }] : [];
+      });
+    if (folderRows.length) return folderRows;
+
     const seen = new Set();
-    return [...document.querySelectorAll('a[href]')].flatMap((link) => {
+    const linked = [...document.querySelectorAll('a[href]')].flatMap((link) => {
       const url = new URL(link.href);
       if (url.origin !== ORIGIN || !/\/(?:g\/g-p-|project\/)/.test(url.pathname) || url.pathname.includes('/c/')) return [];
       const name = (link.innerText || link.getAttribute('aria-label') || link.title || '').replace(/\s+/g, ' ').trim();
       if (!name || seen.has(url.pathname)) return [];
       seen.add(url.pathname);
-      return [{ name, link, pathname: url.pathname }];
+      return [{ name, link, key: url.pathname }];
     });
+    if (linked.length) return linked;
+
+    // ChatGPT 有时用按钮而不是项目链接；从侧栏“项目”标题附近寻找文件夹行。
+    const heading = [...document.querySelectorAll('span, div, h2, h3')]
+      .filter((node) => /^(项目|Projects)$/i.test(node.textContent?.trim() || '') && node.offsetParent !== null)
+      .sort((a, b) => a.querySelectorAll('*').length - b.querySelectorAll('*').length)
+      .find((node) => node.getBoundingClientRect().left < 420);
+    if (!heading) return [];
+    const selector = 'a, button, [role="link"], [role="button"], [data-sidebar-item="true"]';
+    for (let section = heading.parentElement, depth = 0; section && depth < 5; section = section.parentElement, depth += 1) {
+      const nodes = [...section.querySelectorAll(selector)].filter((node) => {
+        if (node === heading || node.contains(heading) || !(heading.compareDocumentPosition(node) & Node.DOCUMENT_POSITION_FOLLOWING)) return false;
+        if (node.closest('.gbm-toolbar, .gbm-project-picker') || node.querySelector('a[href*="/c/"], .gbm-checkbox')) return false;
+        const name = (node.innerText || node.getAttribute('aria-label') || '').replace(/\s+/g, ' ').trim();
+        if (!name || /^(项目|Projects|新建项目|New project|查看更多|Show more)$/i.test(name)) return false;
+        return Boolean(node.querySelector('svg') || /project|gizmo/i.test(node.getAttribute('data-testid') || ''));
+      });
+      const leafNodes = nodes.filter((node) => !nodes.some((other) => other !== node && node.contains(other)));
+      if (leafNodes.length) return leafNodes.map((link, index) => ({
+        name: (link.innerText || link.getAttribute('aria-label') || '').replace(/\s+/g, ' ').trim(),
+        link,
+        key: `row:${index}`
+      }));
+    }
+    return [];
   }
 
   function chooseProject() {
