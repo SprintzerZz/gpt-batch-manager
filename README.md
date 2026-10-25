@@ -1,5 +1,7 @@
 # GPT Batch Manager
 
+![GPT Batch Manager logo](icons/icon-128.png)
+
 [中文](#中文) · [English](#english)
 
 ## 中文

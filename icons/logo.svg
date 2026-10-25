@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title">
+  <title id="title">GPT Batch Manager</title>
+  <rect width="128" height="128" rx="27" fill="#087A6A"/>
+  <path d="M36 22h41c12 0 21 9 21 21v21c0 12-9 21-21 21H43L30 94V82c-9-3-15-11-15-21V43c0-12 9-21 21-21Z"
+        fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round" opacity=".7"/>
+  <path d="M54 42h38c11 0 19 8 19 19v22c0 11-8 19-19 19H58l-14 10V98c-6-4-10-10-10-18V61c0-11 9-19 20-19Z"
+        fill="#FFFFFF"/>
+  <path d="m52 72 14 13 27-28" fill="none" stroke="#087A6A" stroke-width="10"
+        stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
