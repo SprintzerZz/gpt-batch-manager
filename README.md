@@ -18,7 +18,7 @@
 - “全选未归档”按页读取账号中的未归档对话，包括尚未出现在侧栏的对话；读取不完整时不会提交部分选择。
 - 批量删除、归档，最多同时处理 4 个请求。成功后立即从侧栏隐藏对应条目；失败项保持勾选。
 - 将选中对话的标题、ID 和链接导出为 JSON。导出文件**不包含对话正文**。
-- 通过 ChatGPT 原生菜单移动已显示在侧栏的对话。尚未显示的对话暂不支持移动。
+- 批量移动时，在首个对话的 ChatGPT 原生菜单中选择一次目标项目，后续对话自动移到同一项目。尚未显示在侧栏或不支持“移动到项目”的对话不能移动。
 
 ### 安装
 
@@ -29,7 +29,7 @@
 
 ### 使用
 
-勾选侧栏中的对话，或点击“全选未归档”，然后选择“归档”“移动”“导出”或“删除”。删除前会再次确认。全选读取期间会显示进度，可点击 × 取消。
+勾选侧栏中的对话，或点击“全选未归档”，然后选择“归档”“移动”“导出”或“删除”。点击“移动”后，请在 ChatGPT 打开的菜单中选择目标项目；本次批量移动都会使用该项目。删除前会再次确认。全选读取期间会显示进度，可点击 × 取消。
 
 ### 注意
 
@@ -47,7 +47,7 @@ A lightweight Chrome / Edge extension for selecting and managing ChatGPT convers
 - **Select all unarchived** paginates through the account's unarchived conversations, including those not yet rendered in the sidebar. An incomplete fetch never becomes a partial “select all.”
 - Deletes or archives in batches with up to four concurrent requests. Successful items disappear from the sidebar immediately; failed items remain selected.
 - Exports selected conversation titles, IDs, and URLs as JSON. The export **does not include message content**.
-- Moves conversations through ChatGPT's native menu. This currently works only for conversations rendered in the sidebar.
+- For a batch move, choose a destination project once in ChatGPT's native menu for the first chat; the remaining chats use that project. Only chats rendered in the sidebar and eligible for Move to project are supported.
 
 ### Install
 
@@ -58,7 +58,7 @@ A lightweight Chrome / Edge extension for selecting and managing ChatGPT convers
 
 ### Use
 
-Select conversations in the sidebar, or click **全选未归档** (Select all unarchived), then choose **归档** (Archive), **移动** (Move), **导出** (Export), or **删除** (Delete). Deletion requires confirmation. The select-all operation shows progress and can be cancelled with ×.
+Select conversations in the sidebar, or click **全选未归档** (Select all unarchived), then choose **归档** (Archive), **移动** (Move), **导出** (Export), or **删除** (Delete). After clicking Move, choose the destination project in ChatGPT's menu; the whole batch uses that project. Deletion requires confirmation. The select-all operation shows progress and can be cancelled with ×.
 
 ### Notes
 

@@ -280,6 +280,7 @@
     state.busy = true;
     let completed = 0;
     let failure = '';
+    let moveDestination = null;
     const toolbar = ensureToolbar();
     toolbar.querySelectorAll('[data-gbm-action]').forEach((button) => { button.disabled = true; });
     toolbar.querySelector('[data-gbm-select-all]').disabled = true;
@@ -295,14 +296,15 @@
             ? await deleteConversation(item.id)
             : action === 'archive'
               ? await updateConversation(item.id, { is_archived: true })
-              : { ok: await invokeConversationMenu(item, action) };
+              : await moveConversation(item, moveDestination);
           if (result.ok) {
+            if (action === 'move') moveDestination = result.destination;
             completed += 1;
             state.selected.delete(item.id);
             if (action === 'delete' || action === 'archive') hideConversation(item.id);
           } else {
             failure = result.reason || '无法完成操作';
-            if (result.stop) stopped = true;
+            if (result.stop || action === 'move') stopped = true;
           }
           setStatus(`${actionLabel(action)}中：${completed}/${items.length}`);
         }
@@ -323,26 +325,43 @@
     }
   }
 
-  async function invokeConversationMenu(item, action) {
+  async function moveConversation(item, destination) {
     const link = findConversationLink(item.id) || item.link;
-    if (!link || !link.isConnected) return false;
+    if (!link || !link.isConnected) return { ok: false, reason: '对话未显示在侧栏' };
     const menuButton = findMenuButton(link);
-    if (!menuButton) return false;
+    if (!menuButton) return { ok: false, reason: '找不到对话菜单；此对话可能不支持移动' };
     menuButton.click();
-    await wait(150);
-    const option = findMenuOption(action);
-    if (!option) return false;
+    const option = await waitForMenuOption('move');
+    if (!option) return { ok: false, reason: '没有“移动到项目”选项；此对话可能不支持移动' };
+    const choicePromise = destination ? null : waitForProjectChoice(item.id);
     option.click();
-    await wait(350);
-    if (action === 'delete') {
-      const confirmButton = await waitForConfirmationButton();
-      if (confirmButton) {
-        confirmButton.click();
-        await wait(600);
-        return !findConversationLink(item.id);
+    let chosen = destination;
+    let originalRow;
+    let originalParent;
+    if (!chosen) {
+      setStatus('请在 ChatGPT 菜单中选择本次批量移动的目标项目…');
+      const selection = await choicePromise;
+      chosen = selection?.name;
+      originalRow = selection?.row;
+      originalParent = selection?.parent;
+      if (!chosen) return { ok: false, reason: '未选择目标项目，或项目菜单已关闭' };
+      if (!originalRow) return { ok: false, reason: '对话已从侧栏消失，无法确认移动' };
+    } else {
+      const matches = await waitForProjectChoices(chosen);
+      if (matches.length !== 1) return { ok: false, reason: `找不到唯一的目标项目“${chosen}”` };
+      const currentLink = findConversationLink(item.id);
+      if (!currentLink) return { ok: false, reason: '对话已从侧栏消失，无法确认移动' };
+      originalRow = conversationRow(currentLink);
+      originalParent = originalRow.parentElement;
+      matches[0].click();
+    }
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      await wait(300);
+      if (!originalRow.isConnected || originalRow.parentElement !== originalParent) {
+        return { ok: true, destination: chosen };
       }
     }
-    return true;
+    return { ok: false, reason: `未能确认已移动到“${chosen}”；请检查项目后重试` };
   }
 
   async function deleteConversation(id) {
@@ -442,25 +461,63 @@
     });
   }
 
-  function findConfirmationButton() {
-    const dialog = [...document.querySelectorAll('[role="dialog"], [role="alertdialog"]')]
-      .find((node) => node.offsetParent !== null && /删除|delete/i.test(node.innerText || ''));
-    if (!dialog) return null;
-    const root = dialog;
-    return [...root.querySelectorAll('button')].reverse().find((button) => {
-      if (button.offsetParent === null) return false;
-      const text = (button.innerText || button.textContent || '').trim().toLowerCase();
-      return text === '删除' || text === 'delete' || text.includes('确认删除');
-    });
-  }
-
-  async function waitForConfirmationButton() {
-    for (let attempt = 0; attempt < 8; attempt += 1) {
-      const button = findConfirmationButton();
-      if (button) return button;
+  async function waitForMenuOption(action) {
+    for (let attempt = 0; attempt < 12; attempt += 1) {
+      const option = findMenuOption(action);
+      if (option) return option;
       await wait(150);
     }
     return null;
+  }
+
+  function projectChoiceName(node) {
+    const name = (node.innerText || node.textContent || '').replace(/\s+/g, ' ').trim();
+    if (!name || /^(移动到项目|move to project|新建项目|create project|new project|取消|cancel|搜索|search)$/i.test(name)) return null;
+    return name;
+  }
+
+  function projectChoices() {
+    const roots = [...document.querySelectorAll('[role="menu"], [role="listbox"], [role="dialog"]')]
+      .filter((root) => root.offsetParent !== null && !state.toolbar?.contains(root));
+    return roots.flatMap((root) => [...root.querySelectorAll('[role="menuitem"], [role="option"], [cmdk-item], button')])
+      .filter((node) => node.offsetParent !== null && projectChoiceName(node));
+  }
+
+  async function waitForProjectChoices(name) {
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      const matches = projectChoices().filter((choice) => projectChoiceName(choice) === name);
+      if (matches.length) {
+        return matches.filter((choice) => !matches.some((other) => other !== choice && other.contains(choice)));
+      }
+      await wait(150);
+    }
+    return [];
+  }
+
+  function waitForProjectChoice(id) {
+    return new Promise((resolve) => {
+      let timer;
+      const finish = (selection) => {
+        clearTimeout(timer);
+        document.removeEventListener('click', onClick, true);
+        document.removeEventListener('keydown', onKeydown, true);
+        resolve(selection);
+      };
+      const onClick = (event) => {
+        if (!event.isTrusted) return;
+        const choice = event.target.closest('[role="menuitem"], [role="option"], [cmdk-item], button');
+        if (choice && projectChoices().includes(choice)) {
+          const link = findConversationLink(id);
+          const row = link ? conversationRow(link) : null;
+          finish({ name: projectChoiceName(choice), row, parent: row?.parentElement });
+        }
+        else if (!event.target.closest('[role="menu"], [role="dialog"], [role="listbox"]')) finish(null);
+      };
+      const onKeydown = (event) => { if (event.key === 'Escape') finish(null); };
+      document.addEventListener('click', onClick, true);
+      document.addEventListener('keydown', onKeydown, true);
+      timer = setTimeout(() => finish(null), 90000);
+    });
   }
 
   function actionLabel(action) {
