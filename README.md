@@ -35,6 +35,8 @@
 
 删除、归档和列出全部对话使用 ChatGPT 网页的非公开接口，可能随网站更新而失效；移动依赖网页菜单结构。扩展只向当前 ChatGPT 网站发送请求，登录令牌仅保存在当前页面的内存中。删除是不可撤销的操作，建议先用少量不需要的对话测试。
 
+[隐私政策](PRIVACY.md)
+
 ## English
 
 A lightweight Chrome / Edge extension for selecting and managing ChatGPT conversations in batches from the web sidebar.
@@ -61,3 +63,5 @@ Select conversations in the sidebar, or click **全选未归档** (Select all un
 ### Notes
 
 Listing, deleting, and archiving rely on ChatGPT's undocumented web endpoints and may break when the site changes. Moving relies on its menu structure. Requests go only to the current ChatGPT site; the session token stays in page memory. Deletion cannot be undone, so test with a few expendable conversations first.
+
+[Privacy Policy](PRIVACY.md)
