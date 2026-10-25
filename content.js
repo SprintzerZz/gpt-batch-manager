@@ -280,13 +280,18 @@
     state.busy = true;
     let completed = 0;
     let failure = '';
-    let moveDestination = null;
     const toolbar = ensureToolbar();
     toolbar.querySelectorAll('[data-gbm-action]').forEach((button) => { button.disabled = true; });
     toolbar.querySelector('[data-gbm-select-all]').disabled = true;
     toolbar.querySelector('.gbm-close').disabled = true;
-    setStatus(`${actionLabel(action)}中：0/${items.length}`);
     try {
+      const choice = action === 'move' ? await chooseProject() : null;
+      if (action === 'move' && !choice.project) {
+        setStatus(choice.reason);
+        return;
+      }
+      const project = choice?.project;
+      setStatus(`${actionLabel(action)}中：0/${items.length}`);
       let next = 0;
       let stopped = false;
       const worker = async () => {
@@ -296,9 +301,8 @@
             ? await deleteConversation(item.id)
             : action === 'archive'
               ? await updateConversation(item.id, { is_archived: true })
-              : await moveConversation(item, moveDestination);
+              : await moveConversation(item, project);
           if (result.ok) {
-            if (action === 'move') moveDestination = result.destination;
             completed += 1;
             state.selected.delete(item.id);
             if (action === 'delete' || action === 'archive') hideConversation(item.id);
@@ -325,43 +329,134 @@
     }
   }
 
-  async function moveConversation(item, destination) {
+  async function moveConversation(item, project) {
     const link = findConversationLink(item.id) || item.link;
     if (!link || !link.isConnected) return { ok: false, reason: '对话未显示在侧栏' };
-    const menuButton = findMenuButton(link);
-    if (!menuButton) return { ok: false, reason: '找不到对话菜单；此对话可能不支持移动' };
-    menuButton.click();
-    const option = await waitForMenuOption('move');
-    if (!option) return { ok: false, reason: '没有“移动到项目”选项；此对话可能不支持移动' };
-    const choicePromise = destination ? null : waitForProjectChoice(item.id);
-    option.click();
-    let chosen = destination;
-    let originalRow;
-    let originalParent;
-    if (!chosen) {
-      setStatus('请在 ChatGPT 菜单中选择本次批量移动的目标项目…');
-      const selection = await choicePromise;
-      chosen = selection?.name;
-      originalRow = selection?.row;
-      originalParent = selection?.parent;
-      if (!chosen) return { ok: false, reason: '未选择目标项目，或项目菜单已关闭' };
-      if (!originalRow) return { ok: false, reason: '对话已从侧栏消失，无法确认移动' };
-    } else {
-      const matches = await waitForProjectChoices(chosen);
-      if (matches.length !== 1) return { ok: false, reason: `找不到唯一的目标项目“${chosen}”` };
-      const currentLink = findConversationLink(item.id);
-      if (!currentLink) return { ok: false, reason: '对话已从侧栏消失，无法确认移动' };
-      originalRow = conversationRow(currentLink);
-      originalParent = originalRow.parentElement;
-      matches[0].click();
-    }
-    for (let attempt = 0; attempt < 20; attempt += 1) {
-      await wait(300);
-      if (!originalRow.isConnected || originalRow.parentElement !== originalParent) {
-        return { ok: true, destination: chosen };
+    const source = link.closest('[draggable="true"]');
+    const target = sidebarProjects().find((item) => item.pathname === project.pathname)?.link ||
+      (project.link.isConnected ? project.link : null);
+    if (source && target) {
+      const row = conversationRow(link);
+      const parent = row.parentElement;
+      try {
+        dragToProject(source, target);
+        if (await waitForMovedRow(row, parent)) return { ok: true };
+      } catch (error) {
+        console.warn('[GPT Batch Manager] drag failed', error);
       }
     }
-    return { ok: false, reason: `未能确认已移动到“${chosen}”；请检查项目后重试` };
+    const currentLink = findConversationLink(item.id);
+    if (!currentLink) return { ok: false, reason: '对话已从侧栏消失；请检查目标项目' };
+    const menuButton = findMenuButton(currentLink);
+    if (menuButton) {
+      menuButton.click();
+      const option = await waitForMenuOption('move');
+      if (option) {
+        option.click();
+        const matches = await waitForProjectChoices(project.name);
+        if (matches.length === 1) {
+          const row = conversationRow(currentLink);
+          const parent = row.parentElement;
+          matches[0].click();
+          if (await waitForMovedRow(row, parent)) return { ok: true };
+        }
+      }
+    }
+    return { ok: false, reason: `未能确认已移动到“${project.name}”；请检查项目后重试` };
+  }
+
+  function sidebarProjects() {
+    const seen = new Set();
+    return [...document.querySelectorAll('a[href]')].flatMap((link) => {
+      const url = new URL(link.href);
+      if (url.origin !== ORIGIN || !/\/(?:g\/g-p-|project\/)/.test(url.pathname) || url.pathname.includes('/c/')) return [];
+      const name = (link.innerText || link.getAttribute('aria-label') || link.title || '').replace(/\s+/g, ' ').trim();
+      if (!name || seen.has(url.pathname)) return [];
+      seen.add(url.pathname);
+      return [{ name, link, pathname: url.pathname }];
+    });
+  }
+
+  function chooseProject() {
+    const projects = sidebarProjects();
+    return new Promise((resolve) => {
+      const overlay = document.createElement('div');
+      overlay.className = 'gbm-project-picker';
+      overlay.setAttribute('role', 'dialog');
+      overlay.setAttribute('aria-label', '选择目标项目');
+      overlay.setAttribute('aria-modal', 'true');
+      const panel = document.createElement('div');
+      panel.className = 'gbm-project-picker__panel';
+      const title = document.createElement('div');
+      title.className = 'gbm-project-picker__title';
+      title.textContent = '移动到项目';
+      const search = document.createElement('input');
+      search.type = 'search';
+      search.placeholder = '搜索左侧项目';
+      search.setAttribute('aria-label', '搜索项目');
+      const list = document.createElement('div');
+      list.className = 'gbm-project-picker__list';
+      if (!projects.length) {
+        const empty = document.createElement('p');
+        empty.textContent = '未识别到左侧项目。请展开“项目”列表并刷新 ChatGPT 页面后重试。';
+        list.appendChild(empty);
+        search.disabled = true;
+      }
+      const buttons = projects.map((project) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.textContent = project.name;
+        button.addEventListener('click', () => finish(project));
+        list.appendChild(button);
+        return { button, project };
+      });
+      const cancel = document.createElement('button');
+      cancel.type = 'button';
+      cancel.className = 'gbm-project-picker__cancel';
+      cancel.textContent = projects.length ? '取消' : '关闭';
+      cancel.addEventListener('click', () => finish(null));
+      search.addEventListener('input', () => {
+        const query = search.value.trim().toLocaleLowerCase();
+        buttons.forEach(({ button, project }) => {
+          button.hidden = !project.name.toLocaleLowerCase().includes(query);
+        });
+      });
+      overlay.addEventListener('click', (event) => { if (event.target === overlay) finish(null); });
+      const onKeydown = (event) => { if (event.key === 'Escape') finish(null); };
+      function finish(project) {
+        document.removeEventListener('keydown', onKeydown, true);
+        overlay.remove();
+        resolve({ project, reason: projects.length
+          ? '已取消移动，所选对话保持不变'
+          : '未识别到左侧项目；请展开“项目”列表并刷新页面' });
+      }
+      document.addEventListener('keydown', onKeydown, true);
+      panel.append(title, search, list, cancel);
+      overlay.appendChild(panel);
+      document.body.appendChild(overlay);
+      if (projects.length) search.focus();
+      else cancel.focus();
+    });
+  }
+
+  async function waitForMovedRow(row, parent) {
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      await wait(300);
+      if (!row.isConnected || row.parentElement !== parent) return true;
+    }
+    return false;
+  }
+
+  function dragToProject(source, link) {
+    const target = link.closest('[data-sidebar-item="true"]') || link;
+    const transfer = new DataTransfer();
+    transfer.effectAllowed = 'move';
+    for (const [node, type] of [
+      [source, 'dragstart'], [target, 'dragenter'], [target, 'dragover'],
+      [target, 'drop'], [source, 'dragend']
+    ]) {
+      node.dispatchEvent(new DragEvent(type, { bubbles: true, cancelable: true, dataTransfer: transfer }));
+    }
   }
 
   async function deleteConversation(id) {
@@ -492,32 +587,6 @@
       await wait(150);
     }
     return [];
-  }
-
-  function waitForProjectChoice(id) {
-    return new Promise((resolve) => {
-      let timer;
-      const finish = (selection) => {
-        clearTimeout(timer);
-        document.removeEventListener('click', onClick, true);
-        document.removeEventListener('keydown', onKeydown, true);
-        resolve(selection);
-      };
-      const onClick = (event) => {
-        if (!event.isTrusted) return;
-        const choice = event.target.closest('[role="menuitem"], [role="option"], [cmdk-item], button');
-        if (choice && projectChoices().includes(choice)) {
-          const link = findConversationLink(id);
-          const row = link ? conversationRow(link) : null;
-          finish({ name: projectChoiceName(choice), row, parent: row?.parentElement });
-        }
-        else if (!event.target.closest('[role="menu"], [role="dialog"], [role="listbox"]')) finish(null);
-      };
-      const onKeydown = (event) => { if (event.key === 'Escape') finish(null); };
-      document.addEventListener('click', onClick, true);
-      document.addEventListener('keydown', onKeydown, true);
-      timer = setTimeout(() => finish(null), 90000);
-    });
   }
 
   function actionLabel(action) {

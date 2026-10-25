@@ -64,3 +64,56 @@
   font: 13px system-ui, sans-serif;
   box-shadow: 0 5px 18px rgba(0, 0, 0, .25);
 }
+.gbm-project-picker {
+  position: fixed;
+  inset: 0;
+  z-index: 10001;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, .48);
+  font: 14px system-ui, sans-serif;
+}
+.gbm-project-picker__panel {
+  width: min(360px, calc(100vw - 32px));
+  padding: 16px;
+  border-radius: 12px;
+  background: #fff;
+  color: #202123;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, .25);
+}
+.gbm-project-picker__title { margin-bottom: 12px; font-size: 16px; font-weight: 600; }
+.gbm-project-picker input {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #ccc;
+  border-radius: 7px;
+  font: inherit;
+}
+.gbm-project-picker__list { max-height: min(50vh, 360px); margin: 10px 0; overflow-y: auto; }
+.gbm-project-picker__list button {
+  display: block;
+  width: 100%;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+.gbm-project-picker__list button:hover { background: #f1f1f1; }
+.gbm-project-picker__list button[hidden] { display: none; }
+.gbm-project-picker__list p { color: #666; line-height: 1.5; }
+.gbm-project-picker__cancel {
+  display: block;
+  margin-left: auto;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 7px;
+  background: #eee;
+  color: #202123;
+  cursor: pointer;
+  font: inherit;
+}

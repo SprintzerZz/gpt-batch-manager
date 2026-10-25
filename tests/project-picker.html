@@ -1,0 +1,48 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Project picker smoke test</title>
+<nav id="sidebar">
+  <div id="chat-row" data-sidebar-item="true" draggable="true"><a href="/c/test-chat">Test chat</a></div>
+  <div id="project-row" data-sidebar-item="true"><a href="/g/g-p-test-project">Test project</a></div>
+</nav>
+<div id="result">PENDING</div>
+<script>
+  const empty = new URLSearchParams(location.search).has('empty');
+  const projectRow = document.getElementById('project-row');
+  if (empty) projectRow.remove();
+  else {
+    projectRow.addEventListener('dragover', (event) => event.preventDefault());
+    projectRow.addEventListener('drop', (event) => {
+      event.preventDefault();
+      document.getElementById('chat-row')?.remove();
+    });
+  }
+</script>
+<link rel="stylesheet" href="../styles.css">
+<script src="../content.js"></script>
+<script>
+  setTimeout(() => {
+    document.querySelector('.gbm-checkbox')?.click();
+    document.querySelector('[data-gbm-action="move"]')?.click();
+    if (new URLSearchParams(location.search).has('preview')) return;
+    setTimeout(() => {
+      const dialog = document.querySelector('.gbm-project-picker');
+      const result = document.getElementById('result');
+      if (!dialog) { result.textContent = 'FAIL: no dialog'; return; }
+      if (empty) {
+        dialog.querySelector('.gbm-project-picker__cancel')?.click();
+        setTimeout(() => {
+          result.textContent = document.querySelector('.gbm-status')?.textContent.includes('未识别到左侧项目')
+            ? 'GBM_TEST_PASS_EMPTY' : 'FAIL: wrong empty status';
+        }, 50);
+      } else {
+        dialog.querySelector('.gbm-project-picker__list button')?.click();
+        setTimeout(() => {
+          result.textContent = !document.getElementById('chat-row') &&
+            document.querySelector('.gbm-status')?.textContent.includes('移动成功 1/1')
+            ? 'GBM_TEST_PASS_MOVE' : 'FAIL: move not confirmed';
+        }, 500);
+      }
+    }, 100);
+  }, 200);
+</script>
