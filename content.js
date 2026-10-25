@@ -291,14 +291,10 @@
         return;
       }
       const project = choice?.project;
-      const moveSnapshots = action === 'move' ? new Map(items.map((item) => {
-        const link = findConversationLink(item.id);
-        const row = link ? conversationRow(link) : null;
-        return [item.id, { row, parent: row?.parentElement }];
-      })) : null;
       setStatus(`${actionLabel(action)}中：0/${items.length}`);
       let next = 0;
       let stopped = false;
+      let submitted = 0;
       const worker = async () => {
         while (next < items.length && !stopped) {
           const item = items[next++];
@@ -309,7 +305,8 @@
               : await moveConversation(item, project);
           if (result.ok) {
             completed += 1;
-            state.selected.delete(item.id);
+            if (result.submitted) submitted += 1;
+            clearItemSelection(item.id);
             if (action === 'delete' || action === 'archive') hideConversation(item.id);
           } else {
             failures.push({ id: item.id, reason: result.reason || '无法完成操作' });
@@ -320,21 +317,10 @@
       };
       const concurrency = action === 'move' ? 1 : Math.min(BATCH_CONCURRENCY, items.length);
       await Promise.all(Array.from({ length: concurrency }, () => worker()));
-      if (moveSnapshots && failures.length) {
-        await wait(500);
-        for (let index = failures.length - 1; index >= 0; index -= 1) {
-          const { id } = failures[index];
-          const snapshot = moveSnapshots.get(id);
-          if (snapshot?.row && (!snapshot.row.isConnected || snapshot.row.parentElement !== snapshot.parent)) {
-            completed += 1;
-            state.selected.delete(id);
-            failures.splice(index, 1);
-          }
-        }
-      }
       const failure = failures.at(-1)?.reason || '';
       const message = failure
         ? `${actionLabel(action)}成功 ${completed}/${items.length}；失败：${failure}`
+        : submitted ? `移动已提交 ${completed}/${items.length}；${submitted} 项未收到页面确认，请到目标项目核对`
         : `${actionLabel(action)}成功 ${completed}/${items.length}`;
       setStatus(message);
       notify(message);
@@ -351,7 +337,8 @@
     const link = findConversationLink(item.id) || item.link;
     if (!link || !link.isConnected) return { ok: false, reason: '对话未显示在侧栏' };
     const row = conversationRow(link);
-    const parent = row.parentElement;
+    const snapshot = { id: item.id, row, parent: row.parentElement, href: link.href,
+      projectPath: projectPath(project.link) };
     const menuButton = findMenuButton(link);
     if (menuButton) {
       const menusBefore = new Set([...document.querySelectorAll('[role="menu"]')].filter(isVisibleElement));
@@ -369,7 +356,7 @@
         option = await waitForMenuOption('move', 12, menusBefore);
       }
       if (!option) {
-        if (await waitForMovedRow(row, parent, 8)) return { ok: true };
+        if (await waitForMove(snapshot, 8)) return { ok: true };
         return { ok: false, reason: `“${item.title}”的菜单中没有“移至项目”；此对话可能不支持移动` };
       }
       option.dispatchEvent(new PointerEvent('pointermove', {
@@ -381,14 +368,15 @@
         matches = await waitForProjectChoices(project.name);
       }
       if (matches.length !== 1) {
-        if (await waitForMovedRow(row, parent, 8)) return { ok: true };
+        if (await waitForMove(snapshot, 8)) return { ok: true };
         return { ok: false, reason: matches.length
           ? `找到多个同名项目“${project.name}”，无法安全选择`
           : `移动菜单中未找到项目“${project.name}”` };
       }
       matches[0].click();
-      if (await waitForMovedRow(row, parent)) return { ok: true };
-      return { ok: false, reason: `点击“${project.name}”后未能确认移动；请检查项目` };
+      if (await waitForMove(snapshot, 10)) return { ok: true };
+      // ChatGPT 有时只更新服务端状态，侧栏当前行不变；已点击目标项时不误报失败。
+      return { ok: true, submitted: true };
     }
     const source = link.closest('[draggable="true"]');
     const target = sidebarProjects().find((item) => item.key === project.key)?.link ||
@@ -396,7 +384,7 @@
     if (!source || !target) return { ok: false, reason: '未找到对话的更多菜单或可拖放的项目行' };
     try {
       dragToProject(source, target);
-      if (await waitForMovedRow(row, parent)) return { ok: true };
+      if (await waitForMove(snapshot)) return { ok: true };
     } catch (error) {
       console.warn('[GPT Batch Manager] drag failed', error);
     }
@@ -517,12 +505,40 @@
     });
   }
 
-  async function waitForMovedRow(row, parent, attempts = 20) {
+  function projectPath(node) {
+    const anchor = node?.matches?.('a[href]') ? node : node?.querySelector?.('a[href*="/g/g-p-"]');
+    const match = anchor?.href && new URL(anchor.href).pathname.match(/^\/g\/g-p-[^/]+/);
+    return match?.[0] || null;
+  }
+
+  function hasMoved(snapshot) {
+    if (!snapshot.row.isConnected || snapshot.row.parentElement !== snapshot.parent) return true;
+    const links = [...document.querySelectorAll(SELECTOR)].filter((link) => conversationId(link) === snapshot.id);
+    return links.some((link) => {
+      if (link.href === snapshot.href) return false;
+      const path = projectPath(link);
+      return Boolean(path && (!snapshot.projectPath || path === snapshot.projectPath));
+    });
+  }
+
+  async function waitForMove(snapshot, attempts = 20) {
     for (let attempt = 0; attempt < attempts; attempt += 1) {
-      if (!row.isConnected || row.parentElement !== parent) return true;
+      if (hasMoved(snapshot)) return true;
       await wait(300);
     }
-    return !row.isConnected || row.parentElement !== parent;
+    return hasMoved(snapshot);
+  }
+
+  function clearItemSelection(id) {
+    state.selected.delete(id);
+    state.knownAllIds?.delete(id);
+    document.querySelectorAll(SELECTOR).forEach((link) => {
+      if (conversationId(link) !== id) return;
+      const box = link.querySelector('.gbm-checkbox');
+      if (box) box.checked = false;
+      link.classList.remove('gbm-selected');
+    });
+    refresh();
   }
 
   function dragToProject(source, link) {

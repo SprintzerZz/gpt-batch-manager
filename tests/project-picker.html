@@ -10,7 +10,7 @@
 <script>
   const params = new URLSearchParams(location.search);
   const empty = params.has('empty');
-  if (params.has('native') || params.has('native-fixed') || params.has('native-plain') || params.has('native-pointer') || params.has('native-hover') || params.has('native-popup') || params.has('native-popup-batch') || params.has('native-auto') || params.has('mixed')) {
+  if (params.has('native') || params.has('native-fixed') || params.has('native-plain') || params.has('native-pointer') || params.has('native-hover') || params.has('native-popup') || params.has('native-popup-batch') || params.has('native-auto') || params.has('native-same-row') || params.has('native-no-signal') || params.has('mixed')) {
     const rows = [document.getElementById('chat-row')];
     if (params.has('mixed') || params.has('native-popup-batch')) {
       const second = rows[0].cloneNode(true);
@@ -64,7 +64,11 @@
             destination.setAttribute('role', 'menuitem');
           }
           destination.textContent = 'Test project';
-          destination.addEventListener('click', () => chatRow.remove());
+          destination.addEventListener('click', () => {
+            if (params.has('native-same-row')) chatRow.querySelector('a').href = '/g/g-p-test-project/c/test-chat';
+            else if (params.has('native-no-signal')) menu.remove();
+            else chatRow.remove();
+          });
           menu.appendChild(destination);
         });
         menu.appendChild(move);
@@ -119,13 +123,20 @@
         setTimeout(() => {
           const mixed = new URLSearchParams(location.search).has('mixed');
           const batch = new URLSearchParams(location.search).has('native-popup-batch');
+          const sameRow = new URLSearchParams(location.search).has('native-same-row');
+          const noSignal = new URLSearchParams(location.search).has('native-no-signal');
           const moved = mixed ? document.getElementById('chat-row') && !document.getElementById('chat-row-2')
             : batch ? !document.getElementById('chat-row') && !document.getElementById('chat-row-2')
+            : sameRow ? document.querySelector('#chat-row a')?.getAttribute('href') === '/g/g-p-test-project/c/test-chat' &&
+              !document.querySelector('#chat-row .gbm-checkbox')?.checked
+            : noSignal ? document.getElementById('chat-row') && !document.querySelector('#chat-row .gbm-checkbox')?.checked
             : !document.getElementById('chat-row');
-          const status = mixed ? '移动成功 1/2' : batch ? '移动成功 2/2' : '移动成功 1/1';
+          const status = mixed ? '移动成功 1/2' : batch ? '移动成功 2/2'
+            : noSignal ? '移动已提交 1/1' : '移动成功 1/1';
           result.textContent = moved && document.querySelector('.gbm-status')?.textContent.includes(status)
             ? 'GBM_TEST_PASS_MOVE' : 'FAIL: move not confirmed';
-        }, new URLSearchParams(location.search).has('mixed') ? 6500
+        }, new URLSearchParams(location.search).has('native-same-row') || new URLSearchParams(location.search).has('native-no-signal') ? 7500
+          : new URLSearchParams(location.search).has('mixed') ? 6500
           : new URLSearchParams(location.search).has('native-popup-batch') ? 4500
           : new URLSearchParams(location.search).has('native-auto') ? 3200 : 2000);
       }
