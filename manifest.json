@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "GPT Batch Manager",
+  "version": "0.2.0",
+  "description": "Lightweight batch management for ChatGPT conversations.",
+  "permissions": ["storage", "downloads"],
+  "host_permissions": ["https://chatgpt.com/*", "https://chat.openai.com/*"],
+  "content_scripts": [
+    {
+      "matches": ["https://chatgpt.com/*", "https://chat.openai.com/*"],
+      "js": ["content.js"],
+      "css": ["styles.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_title": "GPT Batch Manager"
+  }
+}
