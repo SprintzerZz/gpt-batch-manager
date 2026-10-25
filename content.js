@@ -14,6 +14,7 @@
     tokenPromise: null,
     selectController: null,
     knownAllIds: null,
+    projectById: new Map(),
     hiddenIds: new Set(),
     hiddenRows: new WeakMap()
   };
@@ -101,6 +102,14 @@
     const projects = sidebarProjects();
     const links = allConversationLinks();
     const projectByLink = projectAssignments(links, projects);
+    const directProjects = new Map();
+    links.forEach((link) => {
+      const project = projectForConversation(link, projects, projectByLink);
+      if (!project) return;
+      const descriptor = { name: project.name, key: projectPath(project.link) || project.key };
+      directProjects.set(link, descriptor);
+      state.projectById.set(conversationId(link), descriptor);
+    });
     links.forEach((link) => {
       const id = conversationId(link);
       if (state.knownAllIds && !state.knownAllIds.has(id) && !state.hiddenIds.has(id)) {
@@ -110,7 +119,7 @@
         conversationRow(link).classList.add('gbm-hidden');
         return;
       }
-      updateProjectTag(link, projects, projectByLink);
+      updateProjectTag(link, directProjects.get(link) || state.projectById.get(id));
       if (link.dataset.gbmReady) return;
       link.dataset.gbmReady = '1';
       const box = document.createElement('input');
@@ -171,14 +180,13 @@
     return `hsl(${(hash >>> 0) % 360} 68% 38%)`;
   }
 
-  function updateProjectTag(link, projects, projectByLink) {
-    const project = projectForConversation(link, projects, projectByLink);
+  function updateProjectTag(link, project) {
     let tag = link.querySelector('.gbm-project-tag');
     if (!project) {
       tag?.remove();
       return;
     }
-    const key = projectPath(project.link) || project.key;
+    const key = project.key;
     if (!tag) {
       tag = document.createElement('span');
       tag.className = 'gbm-project-tag';
@@ -223,6 +231,7 @@
 
   function hideConversation(id) {
     state.hiddenIds.add(id);
+    state.projectById.delete(id);
     state.knownAllIds?.delete(id);
     allConversationLinks().filter((link) => conversationId(link) === id).forEach((link) => {
       conversationRow(link).classList.add('gbm-hidden');
@@ -376,6 +385,9 @@
             if (result.submitted) submitted += 1;
             clearItemSelection(item.id);
             if (action === 'delete' || action === 'archive') hideConversation(item.id);
+            if (action === 'move' && !result.submitted) {
+              state.projectById.set(item.id, { name: project.name, key: projectPath(project.link) || project.key });
+            }
           } else {
             failures.push({ id: item.id, reason: result.reason || '无法完成操作' });
             if (result.stop) stopped = true;

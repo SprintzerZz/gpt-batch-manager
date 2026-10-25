@@ -20,6 +20,9 @@
   <div><svg width="12" height="12"><path d="M1 1h10v10H1z"></path></svg><span data-marquee-content="true">Eta</span></div>
   <div data-sidebar-item="true"><a href="/c/seven">Seventh chat</a></div>
   <div>最近</div>
+  <div data-sidebar-item="true"><a href="/c/one">First chat</a></div>
+  <div data-sidebar-item="true"><a href="/c/five">Fifth chat</a></div>
+  <div data-sidebar-item="true"><a href="/g/g-p-beta/c/two">Second chat</a></div>
   <div data-sidebar-item="true"><a href="/c/recent">Recent chat</a></div>
 </nav>
 <div id="result">PENDING</div>
@@ -32,7 +35,9 @@
     const initial = tags[0]?.textContent === 'Alpha' && tags[1]?.textContent === 'Beta' &&
       tags[2]?.textContent === 'Gamma' && tags[3]?.textContent === 'Delta' &&
       tags[4]?.textContent === 'Epsilon' && tags[5]?.textContent === 'Zeta' &&
-      tags[6]?.textContent === 'Eta' && !tags[7] &&
+      tags[6]?.textContent === 'Eta' && tags[7]?.textContent === 'Alpha' &&
+      tags[8]?.textContent === 'Epsilon' && tags[9]?.textContent === 'Beta' && !tags[10] &&
+      tags[0].style.backgroundColor === tags[7].style.backgroundColor &&
       tags[0].style.backgroundColor !== tags[1].style.backgroundColor &&
       !['rgb(0, 0, 0)', 'rgb(255, 255, 255)'].includes(tags[0].style.backgroundColor) &&
       links[0].firstElementChild.classList.contains('gbm-checkbox') &&
@@ -41,9 +46,11 @@
     setTimeout(() => {
       const updated = links[0].querySelector('.gbm-project-tag')?.textContent === 'Alpha';
       document.getElementById('sidebar').appendChild(links[0].parentElement);
+      links[4].parentElement.remove();
       setTimeout(() => {
-        const removed = !links[0].querySelector('.gbm-project-tag');
-        document.getElementById('result').textContent = initial && updated && removed
+        const preserved = links[0].querySelector('.gbm-project-tag')?.textContent === 'Alpha';
+        const cached = links[8].querySelector('.gbm-project-tag')?.textContent === 'Epsilon';
+        document.getElementById('result').textContent = initial && updated && preserved && cached
           ? 'GBM_TEST_PASS_TAGS' : 'FAIL: project tags';
       }, 600);
     }, 600);
