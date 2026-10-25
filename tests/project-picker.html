@@ -10,7 +10,7 @@
 <script>
   const params = new URLSearchParams(location.search);
   const empty = params.has('empty');
-  if (params.has('native') || params.has('mixed')) {
+  if (params.has('native') || params.has('native-fixed') || params.has('native-plain') || params.has('native-pointer') || params.has('native-hover') || params.has('mixed')) {
     const rows = [document.getElementById('chat-row')];
     if (params.has('mixed')) {
       const second = rows[0].cloneNode(true);
@@ -26,19 +26,28 @@
       menuButton.type = 'button';
       menuButton.setAttribute('aria-label', '更多选项');
       menuButton.textContent = '•••';
-      menuButton.addEventListener('click', () => {
+      menuButton.addEventListener(params.has('native-pointer') ? 'pointerdown' : 'click', () => {
         document.querySelectorAll('[role="menu"]').forEach((menu) => menu.remove());
         const menu = document.createElement('div');
         menu.setAttribute('role', 'menu');
-        const move = document.createElement('button');
-        move.type = 'button';
-        move.setAttribute('role', 'menuitem');
+        if (params.has('native-fixed') || params.has('native-plain')) {
+          menu.style.position = 'fixed';
+          menu.style.top = '20px';
+          menu.style.left = '20px';
+        }
+        const move = document.createElement(params.has('native-plain') ? 'div' : 'button');
+        if (!params.has('native-plain')) {
+          move.type = 'button';
+          move.setAttribute('role', 'menuitem');
+        }
         move.textContent = params.has('mixed') && index === 0 ? '归档' : '移至项目';
-        move.addEventListener('click', () => {
+        move.addEventListener(params.has('native-hover') ? 'pointermove' : 'click', () => {
           menu.replaceChildren();
-          const destination = document.createElement('button');
-          destination.type = 'button';
-          destination.setAttribute('role', 'menuitem');
+          const destination = document.createElement(params.has('native-plain') ? 'div' : 'button');
+          if (!params.has('native-plain')) {
+            destination.type = 'button';
+            destination.setAttribute('role', 'menuitem');
+          }
           destination.textContent = 'Test project';
           destination.addEventListener('click', () => chatRow.remove());
           menu.appendChild(destination);
@@ -99,7 +108,7 @@
           const status = mixed ? '移动成功 1/2' : '移动成功 1/1';
           result.textContent = moved && document.querySelector('.gbm-status')?.textContent.includes(status)
             ? 'GBM_TEST_PASS_MOVE' : 'FAIL: move not confirmed';
-        }, new URLSearchParams(location.search).has('mixed') ? 2800 : 500);
+        }, new URLSearchParams(location.search).has('mixed') ? 4200 : 2000);
       }
     }, 100);
   }, 200);

@@ -334,14 +334,26 @@
     if (!link || !link.isConnected) return { ok: false, reason: '对话未显示在侧栏' };
     const menuButton = findMenuButton(link);
     if (menuButton) {
-      menuButton.click();
-      const option = await waitForMenuOption('move');
+      menuButton.dispatchEvent(new PointerEvent('pointerdown', {
+        bubbles: true, cancelable: true, pointerType: 'mouse', button: 0, buttons: 1, isPrimary: true
+      }));
+      let option = await waitForMenuOption('move', 3);
+      if (!option) {
+        menuButton.click();
+        option = await waitForMenuOption('move');
+      }
       if (!option) {
         menuButton.click();
         return { ok: false, reason: `“${item.title}”的菜单中没有“移至项目”；此对话可能不支持移动` };
       }
-      option.click();
-      const matches = await waitForProjectChoices(project.name);
+      option.dispatchEvent(new PointerEvent('pointermove', {
+        bubbles: true, cancelable: true, pointerType: 'mouse', button: 0, isPrimary: true
+      }));
+      let matches = await waitForProjectChoices(project.name, 3);
+      if (!matches.length) {
+        option.click();
+        matches = await waitForProjectChoices(project.name);
+      }
       if (matches.length !== 1) return { ok: false, reason: matches.length
         ? `找到多个同名项目“${project.name}”，无法安全选择`
         : `移动菜单中未找到项目“${project.name}”` };
@@ -569,7 +581,7 @@
       if (node.matches('nav, aside')) break;
       if (node.querySelectorAll(SELECTOR).length > 1) break;
       const buttons = [...node.querySelectorAll('button')]
-        .filter((button) => button.offsetParent !== null && !link.contains(button) && !state.toolbar?.contains(button));
+        .filter((button) => isVisibleElement(button) && !link.contains(button) && !state.toolbar?.contains(button));
       const labeled = buttons.find((button) => {
         const label = `${button.getAttribute('aria-label') || ''} ${button.title || ''} ${button.dataset.testid || ''}`.toLowerCase();
         return /more|option|menu|更多|选项|菜单/.test(label);
@@ -582,6 +594,12 @@
     return null;
   }
 
+  function isVisibleElement(node) {
+    if (!node.isConnected || !node.getClientRects().length) return false;
+    const style = getComputedStyle(node);
+    return style.display !== 'none' && style.visibility !== 'hidden';
+  }
+
   function findMenuOption(action) {
     const labels = {
       delete: ['删除', 'delete'],
@@ -589,20 +607,20 @@
       move: ['移至项目', '移动到项目', '移动', 'move to project', 'move']
     }[action] || [];
     const menus = [...document.querySelectorAll('[role="menu"]')]
-      .filter((menu) => menu.offsetParent !== null);
+      .filter(isVisibleElement);
     const roots = menus.length ? menus : [document];
     const candidates = roots.flatMap((root) => [
-      ...root.querySelectorAll('[role="menuitem"], button')
-    ]);
+      ...root.querySelectorAll('[role="menuitem"], button, span, div')
+    ]).sort((a, b) => a.contains(b) ? 1 : b.contains(a) ? -1 : 0);
     return candidates.find((node) => {
-      if (node.offsetParent === null || state.toolbar?.contains(node)) return false;
+      if (!isVisibleElement(node) || state.toolbar?.contains(node)) return false;
       const text = (node.innerText || node.textContent || '').replace(/\s+/g, ' ').trim().toLowerCase();
-      return labels.some((label) => text === label || text.startsWith(`${label} `));
+      return labels.some((label) => text === label || text.startsWith(label));
     });
   }
 
-  async function waitForMenuOption(action) {
-    for (let attempt = 0; attempt < 12; attempt += 1) {
+  async function waitForMenuOption(action, attempts = 12) {
+    for (let attempt = 0; attempt < attempts; attempt += 1) {
       const option = findMenuOption(action);
       if (option) return option;
       await wait(150);
@@ -618,16 +636,16 @@
 
   function projectChoices() {
     const roots = [...document.querySelectorAll('[role="menu"], [role="listbox"], [role="dialog"]')]
-      .filter((root) => root.offsetParent !== null && !state.toolbar?.contains(root));
-    return roots.flatMap((root) => [...root.querySelectorAll('[role="menuitem"], [role="option"], [cmdk-item], button')])
-      .filter((node) => node.offsetParent !== null && projectChoiceName(node));
+      .filter((root) => isVisibleElement(root) && !state.toolbar?.contains(root));
+    return roots.flatMap((root) => [...root.querySelectorAll('[role="menuitem"], [role="option"], [cmdk-item], button, span, div')])
+      .filter((node) => isVisibleElement(node) && projectChoiceName(node));
   }
 
-  async function waitForProjectChoices(name) {
-    for (let attempt = 0; attempt < 20; attempt += 1) {
+  async function waitForProjectChoices(name, attempts = 20) {
+    for (let attempt = 0; attempt < attempts; attempt += 1) {
       const matches = projectChoices().filter((choice) => projectChoiceName(choice) === name);
       if (matches.length) {
-        return matches.filter((choice) => !matches.some((other) => other !== choice && other.contains(choice)));
+        return matches.filter((choice) => !matches.some((other) => other !== choice && choice.contains(other)));
       }
       await wait(150);
     }
