@@ -8,7 +8,6 @@
     sidebarObserver: null,
     sidebar: null,
     decorateTimer: null,
-    tagTimer: null,
     sidebarTimer: null,
     busy: false,
     accessToken: null,
@@ -30,8 +29,7 @@
   const LIST_PAGE_SIZE = 100;
 
   function conversationId(link) {
-    const match = link.pathname.match(/\/c\/([^/]+)/);
-    return match ? match[1] : '';
+    return new URL(link.href).pathname.split('/').filter(Boolean).pop();
   }
 
   function titleOf(link) {
@@ -104,7 +102,17 @@
   }
 
   function decorate() {
+    const projects = sidebarProjects();
     const links = allConversationLinks();
+    const { byLink: projectByLink, recentLinks } = projectAssignments(links, projects);
+    const directProjects = new Map();
+    links.forEach((link) => {
+      const project = projectForConversation(link, projects, projectByLink);
+      if (!project) return;
+      const descriptor = { name: project.name, key: projectPath(project.link) || project.key };
+      directProjects.set(link, descriptor);
+      state.projectById.set(conversationId(link), descriptor);
+    });
     links.forEach((link) => {
       const id = conversationId(link);
       if (state.knownAllIds && !state.knownAllIds.has(id) && !state.hiddenIds.has(id)) {
@@ -114,6 +122,7 @@
         conversationRow(link).classList.add('gbm-hidden');
         return;
       }
+      updateProjectTag(link, directProjects.get(link) || state.projectById.get(id));
       if (link.dataset.gbmReady) return;
       link.dataset.gbmReady = '1';
       const box = document.createElement('input');
@@ -132,53 +141,28 @@
       link.classList.add('gbm-conversation');
       link.prepend(box);
     });
-    refresh(links);
-    scheduleTagRefresh();
-  }
-
-  function scheduleTagRefresh() {
-    if (state.tagTimer !== null) return;
-    state.tagTimer = setTimeout(() => {
-      state.tagTimer = null;
-      refreshProjectTags();
-    }, 150);
-  }
-
-  function refreshProjectTags() {
-    const projects = sidebarProjects();
-    const links = allConversationLinks();
-    const { byLink: projectByLink, recentLinks } = projectAssignments(links, projects);
-    links.forEach((link) => {
-      const id = conversationId(link);
-      if (state.hiddenIds.has(id)) return;
-      const project = projectForConversation(link, projects, projectByLink);
-      if (project) {
-        state.projectById.set(id, { name: project.name, key: projectPath(project.link) || project.key });
-      }
-      updateProjectTag(link, state.projectById.get(id));
-    });
+    refresh();
     scheduleProjectLookup(recentLinks);
   }
 
   function projectAssignments(links, projects) {
     const root = state.sidebar || document;
-    const events = new Map(projects.filter((project) => root.contains(project.link))
-      .map((project) => [project.link, { project }]));
+    const events = projects.filter((project) => root.contains(project.link))
+      .map((project) => ({ node: project.link, project }));
     root.querySelectorAll('span, div, h2, h3, [role="heading"]').forEach((node) => {
       if (node.children.length > 3 || !/^(最近|Recents|Recent|已归档|Archived)$/i.test(node.textContent?.trim() || '')) return;
       if (!node.closest(SELECTOR) && !node.querySelector(SELECTOR)) {
-        events.set(node, { section: /^(最近|Recents|Recent)$/i.test(node.textContent.trim()) ? 'recent' : 'other' });
+        events.push({ node, section: /^(最近|Recents|Recent)$/i.test(node.textContent.trim()) ? 'recent' : 'other' });
       }
     });
-    links.forEach((link) => events.set(link, { link }));
+    links.forEach((link) => events.push({ node: link, link }));
+    events.sort((a, b) => a.node === b.node ? 0
+      : a.node.compareDocumentPosition(b.node) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1);
     const assignments = new Map();
     const recentLinks = new Set();
     let active = null;
     let inRecent = false;
-    const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT);
-    for (let node = walker.currentNode; node; node = walker.nextNode()) {
-      const event = events.get(node);
-      if (!event) continue;
+    for (const event of events) {
       if (event.link) {
         assignments.set(event.link, active);
         if (inRecent) recentLinks.add(event.link);
@@ -244,7 +228,7 @@
       state.projectLookupPromise = loadProjectMemberships(new Set(missing))
         .catch((error) => console.warn('[GPT Batch Manager] project labels unavailable', error))
         .finally(() => { state.projectLookupPromise = null; });
-    }, 1600);
+    }, 800);
   }
 
   async function loadProjectMemberships(missing) {
@@ -327,13 +311,12 @@
     }
   }
 
-  function refresh(links = getConversationLinks()) {
+  function refresh() {
     const count = state.selected.size;
     const toolbar = ensureToolbar();
     toolbar.classList.toggle('gbm-toolbar--visible', count > 0 || Boolean(toolbar.querySelector('.gbm-status').textContent));
     toolbar.querySelector('.gbm-count').textContent = `已选择 ${count} 项`;
-    const boxes = links.filter((link) => !state.hiddenIds.has(conversationId(link)))
-      .map((link) => link.querySelector('.gbm-checkbox')).filter(Boolean);
+    const boxes = getConversationLinks().map((link) => link.querySelector('.gbm-checkbox')).filter(Boolean);
     boxes.forEach((box) => {
       const link = box.closest('a');
       const selected = state.selected.has(conversationId(link));
@@ -944,21 +927,12 @@
     }, 32);
   }
 
-  function isOwnMutation(record) {
-    if (record.type !== 'childList') return false;
-    const nodes = [...record.addedNodes, ...record.removedNodes];
-    return nodes.length > 0 && nodes.every((node) => node.nodeType === Node.ELEMENT_NODE &&
-      (node.matches('.gbm-checkbox, .gbm-project-tag') || node.closest?.('.gbm-toolbar, .gbm-toast')));
-  }
-
   function attachSidebarObserver() {
     const nextSidebar = findSidebar();
     if (!nextSidebar || nextSidebar === state.sidebar) return;
     state.sidebarObserver?.disconnect();
     state.sidebar = nextSidebar;
-    state.sidebarObserver = new MutationObserver((records) => {
-      if (records.some((record) => !isOwnMutation(record))) scheduleDecorate();
-    });
+    state.sidebarObserver = new MutationObserver(scheduleDecorate);
     state.sidebarObserver.observe(state.sidebar, { childList: true, subtree: true,
       attributes: true, attributeFilter: ['href'] });
     scheduleDecorate();
