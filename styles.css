@@ -15,17 +15,30 @@
 }
 .gbm-project-tag {
   display: inline-block;
-  max-width: 76px;
-  margin-right: 6px;
-  padding: 1px 5px;
-  border-radius: 4px;
-  color: #fff;
-  font: 10px/1.5 system-ui, sans-serif;
+  box-sizing: border-box;
+  max-width: 88px;
+  min-height: 18px;
+  margin-right: 7px;
+  padding: 1px 7px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font: 500 10px/1.3 system-ui, sans-serif;
   vertical-align: 1px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   pointer-events: none;
+}
+.gbm-project-tag::before {
+  content: '';
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  margin-right: 5px;
+  vertical-align: 1px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: .75;
 }
 .gbm-toolbar {
   position: fixed;

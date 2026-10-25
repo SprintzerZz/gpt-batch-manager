@@ -192,7 +192,7 @@
       hash ^= character.codePointAt(0);
       hash = Math.imul(hash, 16777619);
     }
-    return `hsl(${(hash >>> 0) % 360} 68% 38%)`;
+    return (hash >>> 0) % 360;
   }
 
   function updateProjectTag(link, project) {
@@ -214,7 +214,10 @@
     tag.dataset.gbmProject = key;
     tag.textContent = project.name;
     tag.title = `项目：${project.name}`;
-    tag.style.backgroundColor = projectColor(key);
+    const hue = projectColor(key);
+    tag.style.backgroundColor = `hsl(${hue} 70% 92%)`;
+    tag.style.color = `hsl(${hue} 55% 26%)`;
+    tag.style.borderColor = `hsl(${hue} 45% 82%)`;
   }
 
   function scheduleProjectLookup(recentLinks) {
