@@ -17,6 +17,10 @@
       projectRow.className = 'group/folder-row';
       projectRow.innerHTML = '<div class="flex min-w-0 items-center gap-2 rounded-md py-1"><span class="viewport"><span data-marquee-content="true">Test project</span></span></div>';
     }
+    if (new URLSearchParams(location.search).has('menu')) {
+      projectRow.removeAttribute('data-sidebar-item');
+      projectRow.innerHTML = '<div><span data-marquee-content="true">Test project</span></div><div class="group-hover/folder-row:opacity-100"></div>';
+    }
     if (new URLSearchParams(location.search).has('button')) {
       projectRow.innerHTML = '<button type="button"><svg width="16" height="16"><path d="M1 1h14v14H1z"></path></svg> Test project</button>';
     }

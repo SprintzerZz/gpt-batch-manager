@@ -366,11 +366,18 @@
   }
 
   function sidebarProjects() {
-    const folderRows = [...document.querySelectorAll('[class~="group/folder-row"]')]
-      .flatMap((row, index) => {
-        const title = row.querySelector('[data-marquee-content="true"]');
-        const name = title?.textContent?.replace(/\s+/g, ' ').trim();
-        return name ? [{ name, link: row, key: `folder:${index}:${name}` }] : [];
+    const folderRows = [...document.querySelectorAll('[data-marquee-content="true"]')]
+      .flatMap((title, index) => {
+        let row = title.closest('[class~="group/folder-row"]');
+        // 新版侧栏可能只在操作菜单上保留 folder-row 类名。
+        for (let node = title.parentElement, depth = 0; !row && node && depth < 7; node = node.parentElement, depth += 1) {
+          if (node.querySelector('[class*="group-hover/folder-row"]') &&
+              node.querySelectorAll('[data-marquee-content="true"]').length === 1) row = node;
+        }
+        const name = title.textContent?.replace(/\s+/g, ' ').trim();
+        return row && name && !row.closest('.gbm-project-picker')
+          ? [{ name, link: row, key: `folder:${index}:${name}` }]
+          : [];
       });
     if (folderRows.length) return folderRows;
 
