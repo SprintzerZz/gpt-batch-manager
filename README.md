@@ -15,6 +15,7 @@
 ### 功能
 
 - 在已显示的对话前添加复选框。
+- 项目内对话的复选框后显示小型彩色项目标签；同一项目颜色固定，未归属项目的对话不显示标签。
 - “全选未归档”按页读取账号中的未归档对话，包括尚未出现在侧栏的对话；读取不完整时不会提交部分选择。
 - 批量删除、归档，最多同时处理 4 个请求。成功后立即从侧栏隐藏对应条目；失败项保持勾选。
 - 将选中对话的标题、ID 和链接导出为 JSON。导出文件**不包含对话正文**。
@@ -44,6 +45,7 @@ A lightweight Chrome / Edge extension for selecting and managing ChatGPT convers
 ### Features
 
 - Adds a checkbox to each conversation rendered in the sidebar.
+- Shows a small color-coded project label after the checkbox for chats in projects. Each project keeps a consistent color; non-project chats have no label.
 - **Select all unarchived** paginates through the account's unarchived conversations, including those not yet rendered in the sidebar. An incomplete fetch never becomes a partial “select all.”
 - Deletes or archives in batches with up to four concurrent requests. Successful items disappear from the sidebar immediately; failed items remain selected.
 - Exports selected conversation titles, IDs, and URLs as JSON. The export **does not include message content**.

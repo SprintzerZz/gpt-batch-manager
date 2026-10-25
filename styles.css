@@ -13,6 +13,20 @@
   accent-color: #10a37f;
   cursor: pointer;
 }
+.gbm-project-tag {
+  display: inline-block;
+  max-width: 76px;
+  margin-right: 6px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  color: #fff;
+  font: 10px/1.5 system-ui, sans-serif;
+  vertical-align: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
 .gbm-toolbar {
   position: fixed;
   z-index: 9999;

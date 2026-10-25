@@ -29,7 +29,9 @@
   }
 
   function titleOf(link) {
-    return (link.innerText || link.textContent || '').replace(/\s+/g, ' ').trim() || 'Untitled conversation';
+    const copy = link.cloneNode(true);
+    copy.querySelectorAll('.gbm-project-tag').forEach((tag) => tag.remove());
+    return (copy.textContent || '').replace(/\s+/g, ' ').trim() || 'Untitled conversation';
   }
 
   function isConversationLink(link) {
@@ -96,6 +98,7 @@
   }
 
   function decorate() {
+    const projects = sidebarProjects();
     allConversationLinks().forEach((link) => {
       const id = conversationId(link);
       if (state.knownAllIds && !state.knownAllIds.has(id) && !state.hiddenIds.has(id)) {
@@ -105,6 +108,7 @@
         conversationRow(link).classList.add('gbm-hidden');
         return;
       }
+      updateProjectTag(link, projects);
       if (link.dataset.gbmReady) return;
       link.dataset.gbmReady = '1';
       const box = document.createElement('input');
@@ -124,6 +128,67 @@
       link.prepend(box);
     });
     refresh();
+  }
+
+  function projectForConversation(link, projects) {
+    const path = projectPath(link);
+    if (path) {
+      const project = projects.find((item) => projectPath(item.link) === path);
+      if (project) return project;
+    }
+    // 部分侧栏里的项目行没有链接；仅在明确的单项目分组内取其标题。
+    for (let node = link.parentElement, depth = 0; node && depth < 7 && node !== state.sidebar; node = node.parentElement, depth += 1) {
+      const contained = projects.filter((item) => node.contains(item.link));
+      if (contained.length === 1) return contained[0];
+      if (contained.length > 1) break;
+    }
+    // 有些侧栏把项目行和其对话渲染为相邻行，而非父子节点。
+    for (let row = link.closest('[data-sidebar-item="true"]') || link, depth = 0;
+      row?.parentElement && depth < 3;
+      row = row.parentElement, depth += 1) {
+      for (let previous = row.previousElementSibling, scanned = 0; previous && scanned < 40;
+        previous = previous.previousElementSibling, scanned += 1) {
+        const heading = (previous.textContent || '').replace(/\s+/g, ' ').trim();
+        if (/^(最近|Recents|Recent|项目|Projects)/i.test(heading) && !previous.querySelector(SELECTOR)) break;
+        const matched = projects.filter((item) => previous === item.link || previous.contains(item.link));
+        if (matched.length === 1 && !previous.querySelector(SELECTOR)) return matched[0];
+        if (matched.length) break;
+      }
+      if (row.parentElement === state.sidebar) break;
+    }
+    return null;
+  }
+
+  function projectColor(key) {
+    let hash = 2166136261;
+    for (const character of key) {
+      hash ^= character.codePointAt(0);
+      hash = Math.imul(hash, 16777619);
+    }
+    return `hsl(${(hash >>> 0) % 360} 68% 38%)`;
+  }
+
+  function updateProjectTag(link, projects) {
+    const project = projectForConversation(link, projects);
+    let tag = link.querySelector('.gbm-project-tag');
+    if (!project) {
+      tag?.remove();
+      return;
+    }
+    const key = projectPath(project.link) || project.key;
+    if (!tag) {
+      tag = document.createElement('span');
+      tag.className = 'gbm-project-tag';
+      tag.setAttribute('aria-hidden', 'true');
+      const box = link.querySelector('.gbm-checkbox');
+      if (box) box.after(tag);
+      else link.prepend(tag);
+    }
+    if (tag.dataset.gbmProject === key && tag.textContent === project.name) return;
+    tag.dataset.gbmProject = key;
+    tag.textContent = project.name;
+    tag.title = `项目：${project.name}`;
+    tag.style.backgroundColor = projectColor(key);
   }
 
   function refresh() {
@@ -405,18 +470,16 @@
           ? [{ name, link: row, key: `folder:${index}:${name}` }]
           : [];
       });
-    if (folderRows.length) return folderRows;
-
     const seen = new Set();
     const linked = [...document.querySelectorAll('a[href]')].flatMap((link) => {
       const url = new URL(link.href);
       if (url.origin !== ORIGIN || !/\/(?:g\/g-p-|project\/)/.test(url.pathname) || url.pathname.includes('/c/')) return [];
       const name = (link.innerText || link.getAttribute('aria-label') || link.title || '').replace(/\s+/g, ' ').trim();
-      if (!name || seen.has(url.pathname)) return [];
+      if (!name || seen.has(url.pathname) || folderRows.some((item) => item.link.contains(link))) return [];
       seen.add(url.pathname);
       return [{ name, link, key: url.pathname }];
     });
-    if (linked.length) return linked;
+    if (folderRows.length || linked.length) return [...folderRows, ...linked];
 
     // ChatGPT 有时用按钮而不是项目链接；从侧栏“项目”标题附近寻找文件夹行。
     const heading = [...document.querySelectorAll('span, div, h2, h3')]
@@ -725,10 +788,10 @@
 
   function scheduleDecorate() {
     if (state.decorateTimer !== null) return;
-    state.decorateTimer = requestAnimationFrame(() => {
+    state.decorateTimer = setTimeout(() => {
       state.decorateTimer = null;
       decorate();
-    });
+    }, 32);
   }
 
   function attachSidebarObserver() {
@@ -737,7 +800,8 @@
     state.sidebarObserver?.disconnect();
     state.sidebar = nextSidebar;
     state.sidebarObserver = new MutationObserver(scheduleDecorate);
-    state.sidebarObserver.observe(state.sidebar, { childList: true, subtree: true });
+    state.sidebarObserver.observe(state.sidebar, { childList: true, subtree: true,
+      attributes: true, attributeFilter: ['href'] });
     scheduleDecorate();
   }
 
