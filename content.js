@@ -279,7 +279,7 @@
 
     state.busy = true;
     let completed = 0;
-    let failure = '';
+    const failures = [];
     const toolbar = ensureToolbar();
     toolbar.querySelectorAll('[data-gbm-action]').forEach((button) => { button.disabled = true; });
     toolbar.querySelector('[data-gbm-select-all]').disabled = true;
@@ -291,6 +291,11 @@
         return;
       }
       const project = choice?.project;
+      const moveSnapshots = action === 'move' ? new Map(items.map((item) => {
+        const link = findConversationLink(item.id);
+        const row = link ? conversationRow(link) : null;
+        return [item.id, { row, parent: row?.parentElement }];
+      })) : null;
       setStatus(`${actionLabel(action)}中：0/${items.length}`);
       let next = 0;
       let stopped = false;
@@ -307,7 +312,7 @@
             state.selected.delete(item.id);
             if (action === 'delete' || action === 'archive') hideConversation(item.id);
           } else {
-            failure = result.reason || '无法完成操作';
+            failures.push({ id: item.id, reason: result.reason || '无法完成操作' });
             if (result.stop) stopped = true;
           }
           setStatus(`${actionLabel(action)}中：${completed}/${items.length}`);
@@ -315,6 +320,19 @@
       };
       const concurrency = action === 'move' ? 1 : Math.min(BATCH_CONCURRENCY, items.length);
       await Promise.all(Array.from({ length: concurrency }, () => worker()));
+      if (moveSnapshots && failures.length) {
+        await wait(500);
+        for (let index = failures.length - 1; index >= 0; index -= 1) {
+          const { id } = failures[index];
+          const snapshot = moveSnapshots.get(id);
+          if (snapshot?.row && (!snapshot.row.isConnected || snapshot.row.parentElement !== snapshot.parent)) {
+            completed += 1;
+            state.selected.delete(id);
+            failures.splice(index, 1);
+          }
+        }
+      }
+      const failure = failures.at(-1)?.reason || '';
       const message = failure
         ? `${actionLabel(action)}成功 ${completed}/${items.length}；失败：${failure}`
         : `${actionLabel(action)}成功 ${completed}/${items.length}`;
@@ -332,18 +350,26 @@
   async function moveConversation(item, project) {
     const link = findConversationLink(item.id) || item.link;
     if (!link || !link.isConnected) return { ok: false, reason: '对话未显示在侧栏' };
+    const row = conversationRow(link);
+    const parent = row.parentElement;
     const menuButton = findMenuButton(link);
     if (menuButton) {
+      const menusBefore = new Set([...document.querySelectorAll('[role="menu"]')].filter(isVisibleElement));
+      const bodyChildrenBefore = new Set(document.body.children);
       menuButton.dispatchEvent(new PointerEvent('pointerdown', {
         bubbles: true, cancelable: true, pointerType: 'mouse', button: 0, buttons: 1, isPrimary: true
       }));
-      let option = await waitForMenuOption('move', 3);
-      if (!option) {
+      let option = await waitForMenuOption('move', 3,
+        menuButton.getAttribute('aria-expanded') === 'true' ? null : menusBefore);
+      const openedByPointer = [...document.querySelectorAll('[role="menu"]')]
+        .some((menu) => isVisibleElement(menu) && !menusBefore.has(menu)) ||
+        [...document.body.children].some((child) => !bodyChildrenBefore.has(child) && isVisibleElement(child));
+      if (!option && menuButton.getAttribute('aria-expanded') !== 'true' && !openedByPointer) {
         menuButton.click();
-        option = await waitForMenuOption('move');
+        option = await waitForMenuOption('move', 12, menusBefore);
       }
       if (!option) {
-        menuButton.click();
+        if (await waitForMovedRow(row, parent, 8)) return { ok: true };
         return { ok: false, reason: `“${item.title}”的菜单中没有“移至项目”；此对话可能不支持移动` };
       }
       option.dispatchEvent(new PointerEvent('pointermove', {
@@ -354,11 +380,12 @@
         option.click();
         matches = await waitForProjectChoices(project.name);
       }
-      if (matches.length !== 1) return { ok: false, reason: matches.length
-        ? `找到多个同名项目“${project.name}”，无法安全选择`
-        : `移动菜单中未找到项目“${project.name}”` };
-      const row = conversationRow(link);
-      const parent = row.parentElement;
+      if (matches.length !== 1) {
+        if (await waitForMovedRow(row, parent, 8)) return { ok: true };
+        return { ok: false, reason: matches.length
+          ? `找到多个同名项目“${project.name}”，无法安全选择`
+          : `移动菜单中未找到项目“${project.name}”` };
+      }
       matches[0].click();
       if (await waitForMovedRow(row, parent)) return { ok: true };
       return { ok: false, reason: `点击“${project.name}”后未能确认移动；请检查项目` };
@@ -367,8 +394,6 @@
     const target = sidebarProjects().find((item) => item.key === project.key)?.link ||
       (project.link.isConnected ? project.link : null);
     if (!source || !target) return { ok: false, reason: '未找到对话的更多菜单或可拖放的项目行' };
-    const row = conversationRow(link);
-    const parent = row.parentElement;
     try {
       dragToProject(source, target);
       if (await waitForMovedRow(row, parent)) return { ok: true };
@@ -492,12 +517,12 @@
     });
   }
 
-  async function waitForMovedRow(row, parent) {
-    for (let attempt = 0; attempt < 20; attempt += 1) {
-      await wait(300);
+  async function waitForMovedRow(row, parent, attempts = 20) {
+    for (let attempt = 0; attempt < attempts; attempt += 1) {
       if (!row.isConnected || row.parentElement !== parent) return true;
+      await wait(300);
     }
-    return false;
+    return !row.isConnected || row.parentElement !== parent;
   }
 
   function dragToProject(source, link) {
@@ -600,15 +625,15 @@
     return style.display !== 'none' && style.visibility !== 'hidden';
   }
 
-  function findMenuOption(action) {
+  function findMenuOption(action, excludeMenus = null) {
     const labels = {
       delete: ['删除', 'delete'],
       archive: ['归档', 'archive'],
       move: ['移至项目', '移动到项目', '移动', 'move to project', 'move']
     }[action] || [];
-    const menus = [...document.querySelectorAll('[role="menu"]')]
-      .filter(isVisibleElement);
-    const roots = menus.length ? menus : [document];
+    const allMenus = [...document.querySelectorAll('[role="menu"]')].filter(isVisibleElement);
+    const menus = allMenus.filter((menu) => !excludeMenus?.has(menu));
+    const roots = menus.length ? menus : allMenus.length ? [] : [document];
     const candidates = roots.flatMap((root) => [
       ...root.querySelectorAll('[role="menuitem"], button, span, div')
     ]).sort((a, b) => a.contains(b) ? 1 : b.contains(a) ? -1 : 0);
@@ -619,9 +644,9 @@
     });
   }
 
-  async function waitForMenuOption(action, attempts = 12) {
+  async function waitForMenuOption(action, attempts = 12, excludeMenus = null) {
     for (let attempt = 0; attempt < attempts; attempt += 1) {
-      const option = findMenuOption(action);
+      const option = findMenuOption(action, excludeMenus);
       if (option) return option;
       await wait(150);
     }
@@ -637,7 +662,11 @@
   function projectChoices() {
     const roots = [...document.querySelectorAll('[role="menu"], [role="listbox"], [role="dialog"]')]
       .filter((root) => isVisibleElement(root) && !state.toolbar?.contains(root));
-    return roots.flatMap((root) => [...root.querySelectorAll('[role="menuitem"], [role="option"], [cmdk-item], button, span, div')])
+    // ChatGPT 的项目弹窗也可能是挂在 body 下、没有 ARIA role 的 portal。
+    if (state.sidebar) roots.push(...[...document.body.children].filter((root) =>
+      root !== state.sidebar && !root.contains(state.sidebar) &&
+      !root.matches('.gbm-toolbar, .gbm-project-picker, .gbm-toast') && isVisibleElement(root)));
+    return [...new Set(roots.flatMap((root) => [...root.querySelectorAll('[role="menuitem"], [role="option"], [cmdk-item], button, span, div')]))]
       .filter((node) => isVisibleElement(node) && projectChoiceName(node));
   }
 

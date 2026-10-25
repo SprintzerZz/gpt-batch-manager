@@ -10,9 +10,9 @@
 <script>
   const params = new URLSearchParams(location.search);
   const empty = params.has('empty');
-  if (params.has('native') || params.has('native-fixed') || params.has('native-plain') || params.has('native-pointer') || params.has('native-hover') || params.has('mixed')) {
+  if (params.has('native') || params.has('native-fixed') || params.has('native-plain') || params.has('native-pointer') || params.has('native-hover') || params.has('native-popup') || params.has('native-popup-batch') || params.has('native-auto') || params.has('mixed')) {
     const rows = [document.getElementById('chat-row')];
-    if (params.has('mixed')) {
+    if (params.has('mixed') || params.has('native-popup-batch')) {
       const second = rows[0].cloneNode(true);
       second.id = 'chat-row-2';
       second.querySelector('a').href = '/c/test-chat-two';
@@ -26,7 +26,11 @@
       menuButton.type = 'button';
       menuButton.setAttribute('aria-label', '更多选项');
       menuButton.textContent = '•••';
-      menuButton.addEventListener(params.has('native-pointer') ? 'pointerdown' : 'click', () => {
+      menuButton.addEventListener(params.has('native-pointer') || params.has('native-auto') ? 'pointerdown' : 'click', () => {
+        if (params.has('native-auto')) {
+          setTimeout(() => chatRow.remove(), 800);
+          return;
+        }
         document.querySelectorAll('[role="menu"]').forEach((menu) => menu.remove());
         const menu = document.createElement('div');
         menu.setAttribute('role', 'menu');
@@ -42,6 +46,17 @@
         }
         move.textContent = params.has('mixed') && index === 0 ? '归档' : '移至项目';
         move.addEventListener(params.has('native-hover') ? 'pointermove' : 'click', () => {
+          if (params.has('native-popup') || params.has('native-popup-batch')) {
+            const popup = document.createElement('div');
+            popup.className = 'chatgpt-project-popup';
+            popup.style.cssText = 'position:fixed;top:40px;left:450px;background:white';
+            const destination = document.createElement('div');
+            destination.textContent = 'Test project';
+            destination.addEventListener('click', () => { chatRow.remove(); popup.remove(); });
+            popup.appendChild(destination);
+            document.body.appendChild(popup);
+            return;
+          }
           menu.replaceChildren();
           const destination = document.createElement(params.has('native-plain') ? 'div' : 'button');
           if (!params.has('native-plain')) {
@@ -84,7 +99,7 @@
 <script src="../content.js"></script>
 <script>
   setTimeout(() => {
-    if (new URLSearchParams(location.search).has('mixed')) {
+    if (new URLSearchParams(location.search).has('mixed') || new URLSearchParams(location.search).has('native-popup-batch')) {
       document.querySelectorAll('.gbm-checkbox').forEach((box) => box.click());
     } else document.querySelector('.gbm-checkbox')?.click();
     document.querySelector('[data-gbm-action="move"]')?.click();
@@ -103,12 +118,16 @@
         dialog.querySelector('.gbm-project-picker__list button')?.click();
         setTimeout(() => {
           const mixed = new URLSearchParams(location.search).has('mixed');
+          const batch = new URLSearchParams(location.search).has('native-popup-batch');
           const moved = mixed ? document.getElementById('chat-row') && !document.getElementById('chat-row-2')
+            : batch ? !document.getElementById('chat-row') && !document.getElementById('chat-row-2')
             : !document.getElementById('chat-row');
-          const status = mixed ? '移动成功 1/2' : '移动成功 1/1';
+          const status = mixed ? '移动成功 1/2' : batch ? '移动成功 2/2' : '移动成功 1/1';
           result.textContent = moved && document.querySelector('.gbm-status')?.textContent.includes(status)
             ? 'GBM_TEST_PASS_MOVE' : 'FAIL: move not confirmed';
-        }, new URLSearchParams(location.search).has('mixed') ? 4200 : 2000);
+        }, new URLSearchParams(location.search).has('mixed') ? 6500
+          : new URLSearchParams(location.search).has('native-popup-batch') ? 4500
+          : new URLSearchParams(location.search).has('native-auto') ? 3200 : 2000);
       }
     }, 100);
   }, 200);

@@ -18,7 +18,7 @@
 - “全选未归档”按页读取账号中的未归档对话，包括尚未出现在侧栏的对话；读取不完整时不会提交部分选择。
 - 批量删除、归档，最多同时处理 4 个请求。成功后立即从侧栏隐藏对应条目；失败项保持勾选。
 - 将选中对话的标题、ID 和链接导出为 JSON。导出文件**不包含对话正文**。
-- 点击“移动”后弹出左侧项目选择框，识别项目链接或新版文件夹行，选定一个项目用于本次批量移动。移动仅支持已显示在侧栏的对话；网页不支持的对话会保留勾选并显示原因。
+- 点击“移动”后弹出左侧项目选择框，识别项目链接或新版文件夹行，选定一个项目用于本次批量移动。移动时 ChatGPT 自身的项目菜单可能短暂出现，扩展会自动选择目标并核对侧栏结果。移动仅支持已显示在侧栏的对话；网页不支持的对话会保留勾选并显示原因。
 
 ### 安装
 
@@ -47,7 +47,7 @@ A lightweight Chrome / Edge extension for selecting and managing ChatGPT convers
 - **Select all unarchived** paginates through the account's unarchived conversations, including those not yet rendered in the sidebar. An incomplete fetch never becomes a partial “select all.”
 - Deletes or archives in batches with up to four concurrent requests. Successful items disappear from the sidebar immediately; failed items remain selected.
 - Exports selected conversation titles, IDs, and URLs as JSON. The export **does not include message content**.
-- Move opens a picker of projects from the sidebar, including newer folder-style project rows. Choose one destination for the batch. Only chats rendered in the sidebar and eligible for moving are supported; failed items remain selected.
+- Move opens a picker of projects from the sidebar, including newer folder-style project rows. Choose one destination for the batch. ChatGPT's own project menu may appear briefly while the extension selects the destination and checks the sidebar result. Only chats rendered in the sidebar and eligible for moving are supported; failed items remain selected.
 
 ### Install
 
