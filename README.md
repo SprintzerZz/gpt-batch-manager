@@ -1,6 +1,8 @@
 # GPT Batch Manager
 
-![GPT Batch Manager logo](icons/icon-128.png)
+<p align="center">
+  <img src="icons/icon-128.png" alt="GPT Batch Manager logo" width="128">
+</p>
 
 [中文](#中文) · [English](#english)
 
