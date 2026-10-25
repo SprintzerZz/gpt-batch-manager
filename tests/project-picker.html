@@ -8,7 +8,36 @@
 </nav>
 <div id="result">PENDING</div>
 <script>
-  const empty = new URLSearchParams(location.search).has('empty');
+  const params = new URLSearchParams(location.search);
+  const empty = params.has('empty');
+  if (params.has('native')) {
+    const chatRow = document.getElementById('chat-row');
+    chatRow.removeAttribute('draggable');
+    const menuButton = document.createElement('button');
+    menuButton.type = 'button';
+    menuButton.setAttribute('aria-label', '更多选项');
+    menuButton.textContent = '•••';
+    menuButton.addEventListener('click', () => {
+      const menu = document.createElement('div');
+      menu.setAttribute('role', 'menu');
+      const move = document.createElement('button');
+      move.type = 'button';
+      move.setAttribute('role', 'menuitem');
+      move.textContent = '移至项目';
+      move.addEventListener('click', () => {
+        menu.replaceChildren();
+        const destination = document.createElement('button');
+        destination.type = 'button';
+        destination.setAttribute('role', 'menuitem');
+        destination.textContent = 'Test project';
+        destination.addEventListener('click', () => chatRow.remove());
+        menu.appendChild(destination);
+      });
+      menu.appendChild(move);
+      document.body.appendChild(menu);
+    });
+    chatRow.appendChild(menuButton);
+  }
   const projectRow = document.getElementById('project-row');
   if (empty) projectRow.remove();
   else {

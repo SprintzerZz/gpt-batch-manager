@@ -332,37 +332,35 @@
   async function moveConversation(item, project) {
     const link = findConversationLink(item.id) || item.link;
     if (!link || !link.isConnected) return { ok: false, reason: '对话未显示在侧栏' };
-    const source = link.closest('[draggable="true"]');
-    const target = sidebarProjects().find((item) => item.key === project.key)?.link ||
-      (project.link.isConnected ? project.link : null);
-    if (source && target) {
-      const row = conversationRow(link);
-      const parent = row.parentElement;
-      try {
-        dragToProject(source, target);
-        if (await waitForMovedRow(row, parent)) return { ok: true };
-      } catch (error) {
-        console.warn('[GPT Batch Manager] drag failed', error);
-      }
-    }
-    const currentLink = findConversationLink(item.id);
-    if (!currentLink) return { ok: false, reason: '对话已从侧栏消失；请检查目标项目' };
-    const menuButton = findMenuButton(currentLink);
+    const menuButton = findMenuButton(link);
     if (menuButton) {
       menuButton.click();
       const option = await waitForMenuOption('move');
-      if (option) {
-        option.click();
-        const matches = await waitForProjectChoices(project.name);
-        if (matches.length === 1) {
-          const row = conversationRow(currentLink);
-          const parent = row.parentElement;
-          matches[0].click();
-          if (await waitForMovedRow(row, parent)) return { ok: true };
-        }
-      }
+      if (!option) return { ok: false, reason: '对话菜单中没有“移至项目”；此对话可能不支持移动' };
+      option.click();
+      const matches = await waitForProjectChoices(project.name);
+      if (matches.length !== 1) return { ok: false, reason: matches.length
+        ? `找到多个同名项目“${project.name}”，无法安全选择`
+        : `移动菜单中未找到项目“${project.name}”` };
+      const row = conversationRow(link);
+      const parent = row.parentElement;
+      matches[0].click();
+      if (await waitForMovedRow(row, parent)) return { ok: true };
+      return { ok: false, reason: `点击“${project.name}”后未能确认移动；请检查项目` };
     }
-    return { ok: false, reason: `未能确认已移动到“${project.name}”；请检查项目后重试` };
+    const source = link.closest('[draggable="true"]');
+    const target = sidebarProjects().find((item) => item.key === project.key)?.link ||
+      (project.link.isConnected ? project.link : null);
+    if (!source || !target) return { ok: false, reason: '未找到对话的更多菜单或可拖放的项目行' };
+    const row = conversationRow(link);
+    const parent = row.parentElement;
+    try {
+      dragToProject(source, target);
+      if (await waitForMovedRow(row, parent)) return { ok: true };
+    } catch (error) {
+      console.warn('[GPT Batch Manager] drag failed', error);
+    }
+    return { ok: false, reason: '未找到对话的更多菜单，拖放也未生效' };
   }
 
   function sidebarProjects() {
@@ -581,7 +579,7 @@
     const labels = {
       delete: ['删除', 'delete'],
       archive: ['归档', 'archive'],
-      move: ['移动到项目', '移动', 'move to project', 'move']
+      move: ['移至项目', '移动到项目', '移动', 'move to project', 'move']
     }[action] || [];
     const menus = [...document.querySelectorAll('[role="menu"]')]
       .filter((menu) => menu.offsetParent !== null);
