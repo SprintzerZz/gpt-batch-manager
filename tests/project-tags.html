@@ -13,6 +13,12 @@
   </div>
   <div class="group/folder-row"><span data-marquee-content="true">Delta</span></div>
   <div data-sidebar-item="true"><a href="/c/four">Fourth chat</a></div>
+  <div class="group/folder-row"><span data-marquee-content="true">Epsilon</span></div>
+  <div data-sidebar-item="true"><a href="/c/five">Fifth chat</a></div>
+  <div class="group/folder-row"><span data-marquee-content="true">Zeta</span></div>
+  <div data-sidebar-item="true"><a href="/c/six">Sixth chat</a></div>
+  <div><svg width="12" height="12"><path d="M1 1h10v10H1z"></path></svg><span data-marquee-content="true">Eta</span></div>
+  <div data-sidebar-item="true"><a href="/c/seven">Seventh chat</a></div>
   <div>最近</div>
   <div data-sidebar-item="true"><a href="/c/recent">Recent chat</a></div>
 </nav>
@@ -24,7 +30,9 @@
     const links = [...document.querySelectorAll('#sidebar a[href*="/c/"]')];
     const tags = links.map((link) => link.querySelector('.gbm-project-tag'));
     const initial = tags[0]?.textContent === 'Alpha' && tags[1]?.textContent === 'Beta' &&
-      tags[2]?.textContent === 'Gamma' && tags[3]?.textContent === 'Delta' && !tags[4] &&
+      tags[2]?.textContent === 'Gamma' && tags[3]?.textContent === 'Delta' &&
+      tags[4]?.textContent === 'Epsilon' && tags[5]?.textContent === 'Zeta' &&
+      tags[6]?.textContent === 'Eta' && !tags[7] &&
       tags[0].style.backgroundColor !== tags[1].style.backgroundColor &&
       !['rgb(0, 0, 0)', 'rgb(255, 255, 255)'].includes(tags[0].style.backgroundColor) &&
       links[0].firstElementChild.classList.contains('gbm-checkbox') &&

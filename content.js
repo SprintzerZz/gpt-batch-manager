@@ -99,7 +99,9 @@
 
   function decorate() {
     const projects = sidebarProjects();
-    allConversationLinks().forEach((link) => {
+    const links = allConversationLinks();
+    const projectByLink = projectAssignments(links, projects);
+    links.forEach((link) => {
       const id = conversationId(link);
       if (state.knownAllIds && !state.knownAllIds.has(id) && !state.hiddenIds.has(id)) {
         state.knownAllIds = null;
@@ -108,7 +110,7 @@
         conversationRow(link).classList.add('gbm-hidden');
         return;
       }
-      updateProjectTag(link, projects);
+      updateProjectTag(link, projects, projectByLink);
       if (link.dataset.gbmReady) return;
       link.dataset.gbmReady = '1';
       const box = document.createElement('input');
@@ -130,33 +132,34 @@
     refresh();
   }
 
-  function projectForConversation(link, projects) {
+  function projectAssignments(links, projects) {
+    if (!projects.length) return new Map();
+    const root = state.sidebar || document;
+    const events = projects.filter((project) => root.contains(project.link))
+      .map((project) => ({ node: project.link, project }));
+    root.querySelectorAll('span, div, h2, h3, [role="heading"]').forEach((node) => {
+      if (node.children.length > 3 || !/^(最近|Recents|Recent|已归档|Archived)$/i.test(node.textContent?.trim() || '')) return;
+      if (!node.closest(SELECTOR) && !node.querySelector(SELECTOR)) events.push({ node, project: null });
+    });
+    links.forEach((link) => events.push({ node: link, link }));
+    events.sort((a, b) => a.node === b.node ? 0
+      : a.node.compareDocumentPosition(b.node) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1);
+    const assignments = new Map();
+    let active = null;
+    for (const event of events) {
+      if (event.link) assignments.set(event.link, active);
+      else active = event.project;
+    }
+    return assignments;
+  }
+
+  function projectForConversation(link, projects, projectByLink) {
     const path = projectPath(link);
     if (path) {
       const project = projects.find((item) => projectPath(item.link) === path);
       if (project) return project;
     }
-    // 部分侧栏里的项目行没有链接；仅在明确的单项目分组内取其标题。
-    for (let node = link.parentElement, depth = 0; node && depth < 7 && node !== state.sidebar; node = node.parentElement, depth += 1) {
-      const contained = projects.filter((item) => node.contains(item.link));
-      if (contained.length === 1) return contained[0];
-      if (contained.length > 1) break;
-    }
-    // 有些侧栏把项目行和其对话渲染为相邻行，而非父子节点。
-    for (let row = link.closest('[data-sidebar-item="true"]') || link, depth = 0;
-      row?.parentElement && depth < 3;
-      row = row.parentElement, depth += 1) {
-      for (let previous = row.previousElementSibling, scanned = 0; previous && scanned < 40;
-        previous = previous.previousElementSibling, scanned += 1) {
-        const heading = (previous.textContent || '').replace(/\s+/g, ' ').trim();
-        if (/^(最近|Recents|Recent|项目|Projects)/i.test(heading) && !previous.querySelector(SELECTOR)) break;
-        const matched = projects.filter((item) => previous === item.link || previous.contains(item.link));
-        if (matched.length === 1 && !previous.querySelector(SELECTOR)) return matched[0];
-        if (matched.length) break;
-      }
-      if (row.parentElement === state.sidebar) break;
-    }
-    return null;
+    return projectByLink.get(link) || null;
   }
 
   function projectColor(key) {
@@ -168,8 +171,8 @@
     return `hsl(${(hash >>> 0) % 360} 68% 38%)`;
   }
 
-  function updateProjectTag(link, projects) {
-    const project = projectForConversation(link, projects);
+  function updateProjectTag(link, projects, projectByLink) {
+    const project = projectForConversation(link, projects, projectByLink);
     let tag = link.querySelector('.gbm-project-tag');
     if (!project) {
       tag?.remove();
@@ -457,8 +460,10 @@
   }
 
   function sidebarProjects() {
-    const folderRows = [...document.querySelectorAll('[data-marquee-content="true"]')]
+    const root = state.sidebar || document;
+    const folderRows = [...root.querySelectorAll('[data-marquee-content="true"]')]
       .flatMap((title, index) => {
+        if (title.closest(SELECTOR)) return [];
         let row = title.closest('[class~="group/folder-row"]');
         // 新版侧栏可能只在操作菜单上保留 folder-row 类名。
         for (let node = title.parentElement, depth = 0; !row && node && depth < 7; node = node.parentElement, depth += 1) {
@@ -466,12 +471,19 @@
               node.querySelectorAll('[data-marquee-content="true"]').length === 1) row = node;
         }
         const name = title.textContent?.replace(/\s+/g, ' ').trim();
+        if (!row && name && !/^(项目|Projects|最近|Recents|Recent)$/i.test(name)) {
+          for (let node = title.parentElement, depth = 0; node && depth < 9 && !node.matches('nav, aside');
+            node = node.parentElement, depth += 1) {
+            if (node.querySelectorAll('[data-marquee-content="true"]').length !== 1 || node.querySelector(SELECTOR)) break;
+            if (node.querySelector('svg') && !node.closest('.gbm-toolbar, .gbm-project-picker')) row = node;
+          }
+        }
         return row && name && !row.closest('.gbm-project-picker')
           ? [{ name, link: row, key: `folder:${index}:${name}` }]
           : [];
       });
     const seen = new Set();
-    const linked = [...document.querySelectorAll('a[href]')].flatMap((link) => {
+    const linked = [...root.querySelectorAll('a[href]')].flatMap((link) => {
       const url = new URL(link.href);
       if (url.origin !== ORIGIN || !/\/(?:g\/g-p-|project\/)/.test(url.pathname) || url.pathname.includes('/c/')) return [];
       const name = (link.innerText || link.getAttribute('aria-label') || link.title || '').replace(/\s+/g, ' ').trim();
@@ -482,7 +494,7 @@
     if (folderRows.length || linked.length) return [...folderRows, ...linked];
 
     // ChatGPT 有时用按钮而不是项目链接；从侧栏“项目”标题附近寻找文件夹行。
-    const heading = [...document.querySelectorAll('span, div, h2, h3')]
+    const heading = [...root.querySelectorAll('span, div, h2, h3')]
       .filter((node) => /^(项目|Projects)$/i.test(node.textContent?.trim() || '') && node.offsetParent !== null)
       .sort((a, b) => a.querySelectorAll('*').length - b.querySelectorAll('*').length)
       .find((node) => node.getBoundingClientRect().left < 420);
