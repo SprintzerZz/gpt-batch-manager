@@ -10,33 +10,44 @@
 <script>
   const params = new URLSearchParams(location.search);
   const empty = params.has('empty');
-  if (params.has('native')) {
-    const chatRow = document.getElementById('chat-row');
-    chatRow.removeAttribute('draggable');
-    const menuButton = document.createElement('button');
-    menuButton.type = 'button';
-    menuButton.setAttribute('aria-label', '更多选项');
-    menuButton.textContent = '•••';
-    menuButton.addEventListener('click', () => {
-      const menu = document.createElement('div');
-      menu.setAttribute('role', 'menu');
-      const move = document.createElement('button');
-      move.type = 'button';
-      move.setAttribute('role', 'menuitem');
-      move.textContent = '移至项目';
-      move.addEventListener('click', () => {
-        menu.replaceChildren();
-        const destination = document.createElement('button');
-        destination.type = 'button';
-        destination.setAttribute('role', 'menuitem');
-        destination.textContent = 'Test project';
-        destination.addEventListener('click', () => chatRow.remove());
-        menu.appendChild(destination);
+  if (params.has('native') || params.has('mixed')) {
+    const rows = [document.getElementById('chat-row')];
+    if (params.has('mixed')) {
+      const second = rows[0].cloneNode(true);
+      second.id = 'chat-row-2';
+      second.querySelector('a').href = '/c/test-chat-two';
+      second.querySelector('a').textContent = 'Test chat two';
+      rows[0].after(second);
+      rows.push(second);
+    }
+    rows.forEach((chatRow, index) => {
+      chatRow.removeAttribute('draggable');
+      const menuButton = document.createElement('button');
+      menuButton.type = 'button';
+      menuButton.setAttribute('aria-label', '更多选项');
+      menuButton.textContent = '•••';
+      menuButton.addEventListener('click', () => {
+        document.querySelectorAll('[role="menu"]').forEach((menu) => menu.remove());
+        const menu = document.createElement('div');
+        menu.setAttribute('role', 'menu');
+        const move = document.createElement('button');
+        move.type = 'button';
+        move.setAttribute('role', 'menuitem');
+        move.textContent = params.has('mixed') && index === 0 ? '归档' : '移至项目';
+        move.addEventListener('click', () => {
+          menu.replaceChildren();
+          const destination = document.createElement('button');
+          destination.type = 'button';
+          destination.setAttribute('role', 'menuitem');
+          destination.textContent = 'Test project';
+          destination.addEventListener('click', () => chatRow.remove());
+          menu.appendChild(destination);
+        });
+        menu.appendChild(move);
+        document.body.appendChild(menu);
       });
-      menu.appendChild(move);
-      document.body.appendChild(menu);
+      chatRow.appendChild(menuButton);
     });
-    chatRow.appendChild(menuButton);
   }
   const projectRow = document.getElementById('project-row');
   if (empty) projectRow.remove();
@@ -64,7 +75,9 @@
 <script src="../content.js"></script>
 <script>
   setTimeout(() => {
-    document.querySelector('.gbm-checkbox')?.click();
+    if (new URLSearchParams(location.search).has('mixed')) {
+      document.querySelectorAll('.gbm-checkbox').forEach((box) => box.click());
+    } else document.querySelector('.gbm-checkbox')?.click();
     document.querySelector('[data-gbm-action="move"]')?.click();
     if (new URLSearchParams(location.search).has('preview')) return;
     setTimeout(() => {
@@ -80,10 +93,13 @@
       } else {
         dialog.querySelector('.gbm-project-picker__list button')?.click();
         setTimeout(() => {
-          result.textContent = !document.getElementById('chat-row') &&
-            document.querySelector('.gbm-status')?.textContent.includes('移动成功 1/1')
+          const mixed = new URLSearchParams(location.search).has('mixed');
+          const moved = mixed ? document.getElementById('chat-row') && !document.getElementById('chat-row-2')
+            : !document.getElementById('chat-row');
+          const status = mixed ? '移动成功 1/2' : '移动成功 1/1';
+          result.textContent = moved && document.querySelector('.gbm-status')?.textContent.includes(status)
             ? 'GBM_TEST_PASS_MOVE' : 'FAIL: move not confirmed';
-        }, 500);
+        }, new URLSearchParams(location.search).has('mixed') ? 2800 : 500);
       }
     }, 100);
   }, 200);

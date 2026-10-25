@@ -308,7 +308,7 @@
             if (action === 'delete' || action === 'archive') hideConversation(item.id);
           } else {
             failure = result.reason || '无法完成操作';
-            if (result.stop || action === 'move') stopped = true;
+            if (result.stop) stopped = true;
           }
           setStatus(`${actionLabel(action)}中：${completed}/${items.length}`);
         }
@@ -336,7 +336,10 @@
     if (menuButton) {
       menuButton.click();
       const option = await waitForMenuOption('move');
-      if (!option) return { ok: false, reason: '对话菜单中没有“移至项目”；此对话可能不支持移动' };
+      if (!option) {
+        menuButton.click();
+        return { ok: false, reason: `“${item.title}”的菜单中没有“移至项目”；此对话可能不支持移动` };
+      }
       option.click();
       const matches = await waitForProjectChoices(project.name);
       if (matches.length !== 1) return { ok: false, reason: matches.length
@@ -562,8 +565,11 @@
 
   function findMenuButton(link) {
     let node = link;
-    for (let level = 0; node && level < 6; level += 1, node = node.parentElement) {
-      const buttons = [...node.querySelectorAll('button')].filter((button) => button.offsetParent !== null);
+    for (let level = 0; node && level < 8; level += 1, node = node.parentElement) {
+      if (node.matches('nav, aside')) break;
+      if (node.querySelectorAll(SELECTOR).length > 1) break;
+      const buttons = [...node.querySelectorAll('button')]
+        .filter((button) => button.offsetParent !== null && !link.contains(button) && !state.toolbar?.contains(button));
       const labeled = buttons.find((button) => {
         const label = `${button.getAttribute('aria-label') || ''} ${button.title || ''} ${button.dataset.testid || ''}`.toLowerCase();
         return /more|option|menu|更多|选项|菜单/.test(label);
@@ -571,6 +577,7 @@
       if (labeled) return labeled;
       const menuButton = buttons.find((button) => button.getAttribute('aria-haspopup') === 'menu');
       if (menuButton) return menuButton;
+      if (buttons.length === 1 && node.querySelectorAll(SELECTOR).length === 1) return buttons[0];
     }
     return null;
   }
