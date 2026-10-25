@@ -327,7 +327,7 @@
       link.classList.toggle('gbm-selected', selected);
     });
     const selectAll = toolbar.querySelector('[data-gbm-select-all]');
-    const allSelected = state.knownAllIds !== null &&
+    const allSelected = state.knownAllIds !== null && state.knownAllIds.size > 0 &&
       [...state.knownAllIds].every((id) => state.selected.has(id));
     selectAll.checked = allSelected;
     selectAll.indeterminate = count > 0 && !allSelected;
@@ -464,7 +464,10 @@
       setStatus('移动目前只支持已显示在侧栏的对话；请缩小选择范围');
       return;
     }
-    if (action === 'delete' && !confirm(`确定删除选中的 ${items.length} 个对话吗？删除后可能无法恢复。`)) return;
+    if (action === 'delete') {
+      if (!confirm(`确定删除选中的 ${items.length} 个对话吗？删除后可能无法恢复。`)) return;
+      return runOptimisticDelete(items);
+    }
 
     state.busy = true;
     let completed = 0;
@@ -487,16 +490,14 @@
       const worker = async () => {
         while (next < items.length && !stopped) {
           const item = items[next++];
-          const result = action === 'delete'
-            ? await deleteConversation(item.id)
-            : action === 'archive'
+          const result = action === 'archive'
               ? await updateConversation(item.id, { is_archived: true })
               : await moveConversation(item, project);
           if (result.ok) {
             completed += 1;
             if (result.submitted) submitted += 1;
             clearItemSelection(item.id);
-            if (action === 'delete' || action === 'archive') hideConversation(item.id);
+            if (action === 'archive') hideConversation(item.id);
             if (action === 'move' && !result.submitted) {
               state.projectById.set(item.id, { name: project.name, key: projectPath(project.link) || project.key });
             }
@@ -514,6 +515,98 @@
         ? `${actionLabel(action)}成功 ${completed}/${items.length}；失败：${failure}`
         : submitted ? `移动已提交 ${completed}/${items.length}；${submitted} 项未收到页面确认，请到目标项目核对`
         : `${actionLabel(action)}成功 ${completed}/${items.length}`;
+      setStatus(message);
+      notify(message);
+    } finally {
+      state.busy = false;
+      toolbar.querySelectorAll('[data-gbm-action]').forEach((button) => { button.disabled = false; });
+      toolbar.querySelector('[data-gbm-select-all]').disabled = false;
+      toolbar.querySelector('.gbm-close').disabled = false;
+      refresh();
+    }
+  }
+
+  async function runOptimisticDelete(items) {
+    state.busy = true;
+    const toolbar = ensureToolbar();
+    toolbar.querySelectorAll('[data-gbm-action]').forEach((button) => { button.disabled = true; });
+    toolbar.querySelector('[data-gbm-select-all]').disabled = true;
+    toolbar.querySelector('.gbm-close').disabled = true;
+    const pending = new Map(items.map((item) => [item.id, {
+      item,
+      project: state.projectById.get(item.id),
+      known: state.knownAllIds?.has(item.id),
+      rows: []
+    }]));
+    for (const link of allConversationLinks()) {
+      const entry = pending.get(conversationId(link));
+      if (!entry) continue;
+      const row = conversationRow(link);
+      if (!entry.rows.some((saved) => saved.row === row)) {
+        entry.rows.push({ row, parent: row.parentNode, next: row.nextSibling });
+      }
+      row.classList.add('gbm-hidden');
+    }
+    for (const item of items) {
+      state.hiddenIds.add(item.id);
+      state.selected.delete(item.id);
+      state.knownAllIds?.delete(item.id);
+    }
+    setStatus(`正在后台删除：0/${items.length}`);
+    refresh();
+
+    let next = 0;
+    let completed = 0;
+    let stopped = false;
+    const failures = [];
+    const confirmed = new Set();
+    const restore = (entry) => {
+      const { item, project, known, rows } = entry;
+      state.hiddenIds.delete(item.id);
+      if (project) state.projectById.set(item.id, project);
+      if (known) state.knownAllIds?.add(item.id);
+      state.selected.set(item.id, item);
+      for (const { row, parent, next: nextSibling } of rows) {
+        if (!row.isConnected && parent?.isConnected) {
+          parent.insertBefore(row, nextSibling?.parentNode === parent ? nextSibling : null);
+        }
+        row.classList.remove('gbm-hidden');
+      }
+      allConversationLinks().filter((link) => conversationId(link) === item.id)
+        .forEach((link) => conversationRow(link).classList.remove('gbm-hidden'));
+      refresh();
+    };
+    try {
+      const worker = async () => {
+        while (next < items.length && !stopped) {
+          const item = items[next++];
+          const result = await deleteConversation(item.id);
+          if (result.ok) {
+            completed += 1;
+            confirmed.add(item.id);
+            state.projectById.delete(item.id);
+          } else {
+            failures.push(result.reason || '无法完成操作');
+            restore(pending.get(item.id));
+            if (result.stop) stopped = true;
+          }
+          setStatus(`后台删除：${completed}/${items.length}${failures.length ? `；已恢复 ${failures.length} 项` : ''}`);
+        }
+      };
+      await Promise.all(Array.from({ length: Math.min(BATCH_CONCURRENCY, items.length) }, () => worker()));
+      for (const item of items.slice(next)) restore(pending.get(item.id));
+      const restored = items.length - completed;
+      const message = restored
+        ? `删除成功 ${completed}/${items.length}；${restored} 项已恢复${failures.length ? `（${failures.at(-1)}）` : ''}`
+        : `删除成功 ${completed}/${items.length}`;
+      setStatus(message);
+      notify(message);
+    } catch (error) {
+      console.warn('[GPT Batch Manager] background delete interrupted', error);
+      for (const entry of pending.values()) {
+        if (!confirmed.has(entry.item.id)) restore(entry);
+      }
+      const message = `删除成功 ${completed}/${items.length}；其余对话已恢复（后台删除中断）`;
       setStatus(message);
       notify(message);
     } finally {

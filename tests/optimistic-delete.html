@@ -1,0 +1,85 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Optimistic delete smoke test</title>
+<nav id="sidebar">
+  <div id="first-row" data-sidebar-item="true"><a href="/c/first">First chat</a></div>
+  <div id="second-row" data-sidebar-item="true"><a href="/c/second">Second chat</a></div>
+  <div id="second-copy" data-sidebar-item="true"><a href="/c/second">Second chat copy</a></div>
+</nav>
+<div id="result">PENDING</div>
+<script>
+  const mode = new URLSearchParams(location.search).get('mode') || 'mixed';
+  if (mode === 'stop') {
+    document.getElementById('second-copy').remove();
+    for (const id of ['third', 'fourth', 'fifth', 'sixth']) {
+      const row = document.createElement('div');
+      row.id = `${id}-row`;
+      row.setAttribute('data-sidebar-item', 'true');
+      row.innerHTML = `<a href="/c/${id}">${id} chat</a>`;
+      document.getElementById('sidebar').appendChild(row);
+    }
+  }
+  window.confirm = () => true;
+  let sessionCalls = 0;
+  let deleteCalls = 0;
+  window.fetch = async (input, options = {}) => {
+    const url = new URL(input.toString(), location.href);
+    if (url.pathname === '/api/auth/session') {
+      return new Response(JSON.stringify({ accessToken: mode === 'stop' && sessionCalls++ > 0
+        ? null : 'test-token' }), {
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+    if (options.method === 'DELETE') {
+      deleteCalls += 1;
+      if (mode === 'stop' && url.pathname.endsWith('/first')) {
+        await new Promise((resolve) => setTimeout(resolve, 250));
+        return new Response('{}', { status: 401 });
+      }
+      await new Promise((resolve) => setTimeout(resolve, 700));
+      if (mode === 'all-success' || url.pathname.endsWith('/first')) return new Response(null, { status: 204 });
+      return new Response('{}', { status: 500 });
+    }
+    return new Response('{}', { status: 404 });
+  };
+</script>
+<link rel="stylesheet" href="../styles.css">
+<script src="../content.js"></script>
+<script>
+  setTimeout(() => {
+    document.querySelectorAll('#sidebar .gbm-checkbox').forEach((box) => {
+      if (box.closest('#second-copy')) return;
+      box.click();
+    });
+    document.querySelector('[data-gbm-action="delete"]').click();
+    setTimeout(() => {
+      const hidden = (mode === 'stop'
+        ? ['first-row', 'second-row', 'third-row', 'fourth-row', 'fifth-row', 'sixth-row']
+        : ['first-row', 'second-row', 'second-copy'])
+        .every((id) => document.getElementById(id).classList.contains('gbm-hidden'));
+      const pending = document.querySelector('.gbm-status').textContent.includes(
+        `正在后台删除：0/${mode === 'stop' ? 6 : 2}`);
+      if (mode === 'detached') document.getElementById('second-row').remove();
+      setTimeout(() => {
+        const first = document.getElementById('first-row');
+        const second = document.getElementById('second-row');
+        const copy = document.getElementById('second-copy');
+        const status = document.querySelector('.gbm-status').textContent;
+        const correct = mode === 'stop'
+          ? [...document.querySelectorAll('#sidebar [data-sidebar-item]')]
+              .every((row) => !row.classList.contains('gbm-hidden') &&
+                row.querySelector('.gbm-checkbox').checked) &&
+            status.includes('删除成功 0/6') && status.includes('6 项已恢复') && deleteCalls < 6
+          : mode === 'all-success'
+          ? [first, second, copy].every((row) => row.classList.contains('gbm-hidden')) &&
+            status.includes('删除成功 2/2')
+          : first.classList.contains('gbm-hidden') && second &&
+            !second.classList.contains('gbm-hidden') && !copy.classList.contains('gbm-hidden') &&
+            second.querySelector('.gbm-checkbox').checked && copy.querySelector('.gbm-checkbox').checked &&
+            status.includes('删除成功 1/2') && status.includes('1 项已恢复');
+        document.getElementById('result').textContent = hidden && pending && correct
+          ? 'GBM_TEST_PASS_DELETE' : `FAIL: optimistic delete ${status}; requests ${deleteCalls}; rows ${[...document.querySelectorAll('#sidebar [data-sidebar-item]')].map((row) => `${row.id}:${row.classList.contains('gbm-hidden')}/${row.querySelector('.gbm-checkbox').checked}`).join(',')}`;
+      }, 1300);
+    }, 100);
+  }, 200);
+</script>

@@ -17,7 +17,7 @@
 - 在已显示的对话前添加复选框。
 - 项目内对话及“最近”中能识别出项目归属的同一对话，在复选框后显示小型彩色项目标签；项目折叠时也会按需读取项目对话列表，同一项目颜色固定，未归属项目的对话不显示标签。
 - “全选未归档”按页读取账号中的未归档对话，包括尚未出现在侧栏的对话；读取不完整时不会提交部分选择。
-- 批量删除、归档，最多同时处理 4 个请求。成功后立即从侧栏隐藏对应条目；失败项保持勾选。
+- 批量删除、归档，最多同时处理 4 个请求。确认删除后先从侧栏隐藏所选对话，后台请求失败时恢复对应条目及勾选；归档在成功后隐藏。
 - 将选中对话的标题、ID 和链接导出为 JSON。导出文件**不包含对话正文**。
 - 点击“移动”后弹出左侧项目选择框，识别项目链接或新版文件夹行，选定一个项目用于本次批量移动。移动时 ChatGPT 自身的项目菜单可能短暂出现，扩展会自动选择目标并核对侧栏结果。移动仅支持已显示在侧栏的对话；网页不支持的对话会保留勾选并显示原因。
 
@@ -30,7 +30,7 @@
 
 ### 使用
 
-勾选侧栏中的对话，或点击“全选未归档”，然后选择“归档”“移动”“导出”或“删除”。点击“移动”后，在弹窗中搜索并选择左侧项目；本次批量移动都会使用该项目。删除前会再次确认。全选读取期间会显示进度，可点击 × 取消。
+勾选侧栏中的对话，或点击“全选未归档”，然后选择“归档”“移动”“导出”或“删除”。点击“移动”后，在弹窗中搜索并选择左侧项目；本次批量移动都会使用该项目。删除前会再次确认；确认后请保持 ChatGPT 页面打开，等待后台删除结果和失败项恢复。全选读取期间会显示进度，可点击 × 取消。
 
 ### 注意
 
@@ -47,7 +47,7 @@ A lightweight Chrome / Edge extension for selecting and managing ChatGPT convers
 - Adds a checkbox to each conversation rendered in the sidebar.
 - Shows a small color-coded project label after the checkbox for chats in projects and matching chats under Recents, including when projects are collapsed. Each project keeps a consistent color; non-project chats have no label.
 - **Select all unarchived** paginates through the account's unarchived conversations, including those not yet rendered in the sidebar. An incomplete fetch never becomes a partial “select all.”
-- Deletes or archives in batches with up to four concurrent requests. Successful items disappear from the sidebar immediately; failed items remain selected.
+- Deletes or archives in batches with up to four concurrent requests. Confirmed deletions disappear from the sidebar immediately while requests run; failed deletions reappear with their checkboxes selected. Archives disappear after success.
 - Exports selected conversation titles, IDs, and URLs as JSON. The export **does not include message content**.
 - Move opens a picker of projects from the sidebar, including newer folder-style project rows. Choose one destination for the batch. ChatGPT's own project menu may appear briefly while the extension selects the destination and checks the sidebar result. Only chats rendered in the sidebar and eligible for moving are supported; failed items remain selected.
 
@@ -60,7 +60,7 @@ A lightweight Chrome / Edge extension for selecting and managing ChatGPT convers
 
 ### Use
 
-Select conversations in the sidebar, or click **全选未归档** (Select all unarchived), then choose **归档** (Archive), **移动** (Move), **导出** (Export), or **删除** (Delete). After clicking Move, choose a destination in the project picker; the whole batch uses that project. Deletion requires confirmation. The select-all operation shows progress and can be cancelled with ×.
+Select conversations in the sidebar, or click **全选未归档** (Select all unarchived), then choose **归档** (Archive), **移动** (Move), **导出** (Export), or **删除** (Delete). After clicking Move, choose a destination in the project picker; the whole batch uses that project. Deletion requires confirmation; keep the ChatGPT page open until the background result and any rollback appear. The select-all operation shows progress and can be cancelled with ×.
 
 ### Notes
 
