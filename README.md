@@ -15,7 +15,7 @@
 ### 功能
 
 - 在已显示的对话前添加复选框。
-- 项目内对话及“最近”中能识别出项目归属的同一对话，在复选框后显示小型彩色项目标签；同一项目颜色固定，未归属项目的对话不显示标签。
+- 项目内对话及“最近”中能识别出项目归属的同一对话，在复选框后显示小型彩色项目标签；项目折叠时也会按需读取项目对话列表，同一项目颜色固定，未归属项目的对话不显示标签。
 - “全选未归档”按页读取账号中的未归档对话，包括尚未出现在侧栏的对话；读取不完整时不会提交部分选择。
 - 批量删除、归档，最多同时处理 4 个请求。成功后立即从侧栏隐藏对应条目；失败项保持勾选。
 - 将选中对话的标题、ID 和链接导出为 JSON。导出文件**不包含对话正文**。
@@ -34,7 +34,7 @@
 
 ### 注意
 
-删除、归档和列出全部对话使用 ChatGPT 网页的非公开接口，可能随网站更新而失效；移动依赖网页菜单或拖放结构。扩展只向当前 ChatGPT 网站发送请求，登录令牌仅保存在当前页面的内存中。删除是不可撤销的操作，建议先用少量不需要的对话测试。
+删除、归档、列出全部对话和折叠项目的标签识别使用 ChatGPT 网页的非公开接口，可能随网站更新而失效；移动依赖网页菜单或拖放结构。标签识别使用项目名称和对话 ID，不请求对话正文。扩展只向当前 ChatGPT 网站发送请求，登录令牌仅保存在当前页面的内存中。删除是不可撤销的操作，建议先用少量不需要的对话测试。
 
 [隐私政策](PRIVACY.md)
 
@@ -45,7 +45,7 @@ A lightweight Chrome / Edge extension for selecting and managing ChatGPT convers
 ### Features
 
 - Adds a checkbox to each conversation rendered in the sidebar.
-- Shows a small color-coded project label after the checkbox for chats in projects and matching chats under Recents. Each project keeps a consistent color; non-project chats have no label.
+- Shows a small color-coded project label after the checkbox for chats in projects and matching chats under Recents, including when projects are collapsed. Each project keeps a consistent color; non-project chats have no label.
 - **Select all unarchived** paginates through the account's unarchived conversations, including those not yet rendered in the sidebar. An incomplete fetch never becomes a partial “select all.”
 - Deletes or archives in batches with up to four concurrent requests. Successful items disappear from the sidebar immediately; failed items remain selected.
 - Exports selected conversation titles, IDs, and URLs as JSON. The export **does not include message content**.
@@ -64,6 +64,6 @@ Select conversations in the sidebar, or click **全选未归档** (Select all un
 
 ### Notes
 
-Listing, deleting, and archiving rely on ChatGPT's undocumented web endpoints and may break when the site changes. Moving relies on its menu or drag-and-drop structure. Requests go only to the current ChatGPT site; the session token stays in page memory. Deletion cannot be undone, so test with a few expendable conversations first.
+Listing, deleting, archiving, and resolving labels for collapsed projects rely on ChatGPT's undocumented web endpoints and may break when the site changes. Moving relies on its menu or drag-and-drop structure. Label lookup uses project names and conversation IDs, without requesting message content. Requests go only to the current ChatGPT site; the session token stays in page memory. Deletion cannot be undone, so test with a few expendable conversations first.
 
 [Privacy Policy](PRIVACY.md)

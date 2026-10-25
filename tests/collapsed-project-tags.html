@@ -1,0 +1,62 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Collapsed project tag smoke test</title>
+<nav id="sidebar">
+  <div class="group/folder-row"><span data-marquee-content="true">Alpha</span></div>
+  <div class="group/folder-row"><span data-marquee-content="true">Beta</span></div>
+  <div class="group/folder-row"><span data-marquee-content="true">Gamma</span></div>
+  <div>最近</div>
+  <div data-sidebar-item="true"><a href="/c/first">First chat</a></div>
+  <div data-sidebar-item="true"><a href="/c/second">Second chat</a></div>
+  <div data-sidebar-item="true"><a href="/c/third">Third chat</a></div>
+  <div data-sidebar-item="true"><a href="/c/unfiled">Unfiled chat</a></div>
+</nav>
+<div id="result">PENDING</div>
+<script>
+  const fail = new URLSearchParams(location.search).has('fail');
+  const requests = [];
+  window.fetch = async (input) => {
+    const url = new URL(input.toString(), location.href);
+    requests.push(url.pathname + url.search);
+    const json = (value) => new Response(JSON.stringify(value), {
+      status: 200, headers: { 'Content-Type': 'application/json' }
+    });
+    if (url.pathname === '/api/auth/session') return json({ accessToken: 'fixture-token' });
+    if (url.pathname.endsWith('/gizmos/snorlax/sidebar')) {
+      if (fail) return new Response('{}', { status: 403 });
+      if (url.searchParams.get('cursor') === 'next') return json({ items: [{ gizmo: {
+        gizmo: { id: 'g-p-beta', display: { name: 'Beta' } },
+        conversations: { items: [{ id: 'second' }], cursor: null }
+      } }, { gizmo: {
+        gizmo: { id: 'g-p-gamma', display: { name: 'Gamma' }, num_interactions: 1 },
+        conversations: { items: [], cursor: null }
+      } }], cursor: null });
+      return json({ items: [{ gizmo: {
+        gizmo: { id: 'g-p-alpha', display: { name: 'Alpha' } },
+        conversations: { items: [{ id: 'first' }], cursor: null }
+      } }], cursor: 'next' });
+    }
+    if (url.pathname.endsWith('/gizmos/g-p-gamma/conversations')) {
+      return json({ items: [{ id: 'third' }], cursor: null });
+    }
+    return new Response('{}', { status: 404 });
+  };
+</script>
+<link rel="stylesheet" href="../styles.css">
+<script src="../content.js"></script>
+<script>
+  setTimeout(() => {
+    const tags = [...document.querySelectorAll('#sidebar a[href*="/c/"]')]
+      .map((link) => link.querySelector('.gbm-project-tag'));
+    const correct = fail ? tags.every((tag) => !tag) &&
+      requests.filter((request) => request.includes('/gizmos/snorlax/sidebar')).length === 1
+      : tags[0]?.textContent === 'Alpha' && tags[1]?.textContent === 'Beta' &&
+      tags[2]?.textContent === 'Gamma' && !tags[3] &&
+      tags[0].style.backgroundColor !== tags[1].style.backgroundColor &&
+      requests.filter((request) => request.includes('/gizmos/snorlax/sidebar')).length === 2 &&
+      requests.filter((request) => request.includes('/gizmos/g-p-gamma/conversations')).length === 1;
+    document.getElementById('result').textContent = correct
+      ? fail ? 'GBM_TEST_PASS_FAILURE' : 'GBM_TEST_PASS_COLLAPSED'
+      : `FAIL: collapsed labels ${JSON.stringify(requests)}`;
+  }, 2500);
+</script>

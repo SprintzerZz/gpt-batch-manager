@@ -16,7 +16,10 @@
     knownAllIds: null,
     projectById: new Map(),
     hiddenIds: new Set(),
-    hiddenRows: new WeakMap()
+    hiddenRows: new WeakMap(),
+    projectLookupTimer: null,
+    projectLookupPromise: null,
+    projectLookupAt: 0
   };
 
   // 同时兼容 /c/id 和 https://chatgpt.com/c/id 两种链接形式。
@@ -101,7 +104,7 @@
   function decorate() {
     const projects = sidebarProjects();
     const links = allConversationLinks();
-    const projectByLink = projectAssignments(links, projects);
+    const { byLink: projectByLink, recentLinks } = projectAssignments(links, projects);
     const directProjects = new Map();
     links.forEach((link) => {
       const project = projectForConversation(link, projects, projectByLink);
@@ -139,27 +142,39 @@
       link.prepend(box);
     });
     refresh();
+    scheduleProjectLookup(recentLinks);
   }
 
   function projectAssignments(links, projects) {
-    if (!projects.length) return new Map();
     const root = state.sidebar || document;
     const events = projects.filter((project) => root.contains(project.link))
       .map((project) => ({ node: project.link, project }));
     root.querySelectorAll('span, div, h2, h3, [role="heading"]').forEach((node) => {
       if (node.children.length > 3 || !/^(最近|Recents|Recent|已归档|Archived)$/i.test(node.textContent?.trim() || '')) return;
-      if (!node.closest(SELECTOR) && !node.querySelector(SELECTOR)) events.push({ node, project: null });
+      if (!node.closest(SELECTOR) && !node.querySelector(SELECTOR)) {
+        events.push({ node, section: /^(最近|Recents|Recent)$/i.test(node.textContent.trim()) ? 'recent' : 'other' });
+      }
     });
     links.forEach((link) => events.push({ node: link, link }));
     events.sort((a, b) => a.node === b.node ? 0
       : a.node.compareDocumentPosition(b.node) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1);
     const assignments = new Map();
+    const recentLinks = new Set();
     let active = null;
+    let inRecent = false;
     for (const event of events) {
-      if (event.link) assignments.set(event.link, active);
-      else active = event.project;
+      if (event.link) {
+        assignments.set(event.link, active);
+        if (inRecent) recentLinks.add(event.link);
+      } else if (event.section) {
+        active = null;
+        inRecent = event.section === 'recent';
+      } else {
+        active = event.project;
+        inRecent = false;
+      }
     }
-    return assignments;
+    return { byLink: assignments, recentLinks };
   }
 
   function projectForConversation(link, projects, projectByLink) {
@@ -200,6 +215,100 @@
     tag.textContent = project.name;
     tag.title = `项目：${project.name}`;
     tag.style.backgroundColor = projectColor(key);
+  }
+
+  function scheduleProjectLookup(recentLinks) {
+    const missing = [...recentLinks].map(conversationId)
+      .filter((id) => !state.projectById.has(id) && !state.hiddenIds.has(id));
+    if (!missing.length || state.projectLookupTimer || state.projectLookupPromise ||
+        Date.now() - state.projectLookupAt < 600000) return;
+    state.projectLookupTimer = setTimeout(() => {
+      state.projectLookupTimer = null;
+      state.projectLookupAt = Date.now();
+      state.projectLookupPromise = loadProjectMemberships(new Set(missing))
+        .catch((error) => console.warn('[GPT Batch Manager] project labels unavailable', error))
+        .finally(() => { state.projectLookupPromise = null; });
+    }, 800);
+  }
+
+  async function loadProjectMemberships(missing) {
+    if (!await getAccessToken()) return;
+    const uiProjects = sidebarProjects();
+    const projects = [];
+    const cursors = new Set();
+    let cursor = null;
+    for (let pageNumber = 0; pageNumber < 8; pageNumber += 1) {
+      const url = new URL(`${ORIGIN}/backend-api/gizmos/snorlax/sidebar`);
+      url.searchParams.set('owned_only', 'false');
+      url.searchParams.set('conversations_per_gizmo', '20');
+      if (cursor) url.searchParams.set('cursor', cursor);
+      const page = await readProjectJson(url);
+      if (!Array.isArray(page.items)) return;
+      for (const item of page.items) {
+        const gizmo = item.gizmo?.gizmo || item.gizmo || item;
+        const id = gizmo.id || item.project_id;
+        const name = gizmo.display?.name || gizmo.name || item.name;
+        if (typeof id !== 'string' || !id.startsWith('g-p-') || typeof name !== 'string') continue;
+        const match = uiProjects.find((project) => projectPath(project.link) === `/g/${id}`) ||
+          uiProjects.find((project) => project.name === name);
+        const descriptor = { name, key: match ? projectPath(match.link) || match.key : `/g/${id}` };
+        const conversations = item.gizmo?.conversations || item.conversations;
+        projects.push({ id, descriptor, needsFetch: !conversations?.items?.length &&
+          gizmo.num_interactions !== 0 });
+        addProjectConversations(conversations?.items, descriptor, missing);
+      }
+      if (!page.cursor || cursors.has(page.cursor)) break;
+      cursors.add(page.cursor);
+      cursor = page.cursor;
+    }
+
+    // 仅在侧栏接口没有嵌入对话时补读，避免为所有项目重复发请求。
+    let requests = 0;
+    for (const project of projects) {
+      if (!missing.size || requests >= 12) break;
+      if (!project.needsFetch) continue;
+      const url = new URL(`${ORIGIN}/backend-api/gizmos/${encodeURIComponent(project.id)}/conversations`);
+      url.searchParams.set('cursor', '0');
+      try {
+        const page = await readProjectJson(url);
+        addProjectConversations(page.items, project.descriptor, missing);
+      } catch (error) {
+        console.warn('[GPT Batch Manager] project conversation list unavailable', error);
+      }
+      requests += 1;
+    }
+    scheduleDecorate();
+  }
+
+  function addProjectConversations(items, descriptor, missing) {
+    if (!Array.isArray(items)) return;
+    for (const item of items) {
+      if (typeof item.id !== 'string' || state.hiddenIds.has(item.id)) continue;
+      state.projectById.set(item.id, descriptor);
+      missing.delete(item.id);
+    }
+  }
+
+  async function readProjectJson(url) {
+    let token = await getAccessToken();
+    if (!token) throw new Error('登录会话不可用');
+    let response = await request(token);
+    if (response.status === 401) {
+      state.accessToken = null;
+      token = await getAccessToken();
+      if (!token) throw new Error('登录会话已失效');
+      response = await request(token);
+    }
+    if (!response.ok) throw new Error(`项目列表 HTTP ${response.status}`);
+    return response.json();
+
+    function request(accessToken) {
+      return fetch(url, {
+        credentials: 'include',
+        cache: 'no-store',
+        headers: { Authorization: `Bearer ${accessToken}`, Accept: 'application/json' }
+      });
+    }
   }
 
   function refresh() {
