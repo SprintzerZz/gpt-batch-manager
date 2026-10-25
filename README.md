@@ -4,7 +4,9 @@
   <img src="icons/icon-128.png" alt="GPT Batch Manager logo" width="128">
 </p>
 
-[中文](#中文) · [English](#english)
+<p align="center">
+  <a href="#中文">中文</a> · <a href="#english">English</a>
+</p>
 
 ## 中文
 
