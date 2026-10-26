@@ -22,7 +22,8 @@
     hiddenRows: new WeakMap(),
     projectLookupTimer: null,
     projectLookupPromise: null,
-    projectLookupAt: 0
+    projectLookupAt: 0,
+    projectLookupUnavailable: false
   };
 
   // 同时兼容 /c/id 和 https://chatgpt.com/c/id 两种链接形式。
@@ -278,14 +279,23 @@
   function scheduleProjectLookup(recentLinks) {
     const missing = [...recentLinks].map(conversationId)
       .filter((id) => !state.projectById.has(id) && !state.hiddenIds.has(id));
-    if (!missing.length || state.projectLookupTimer || state.projectLookupPromise ||
+    if (!missing.length || state.projectLookupUnavailable || state.projectLookupTimer || state.projectLookupPromise ||
         Date.now() - state.projectLookupAt < 600000) return;
     state.projectLookupTimer = setTimeout(() => {
       state.projectLookupTimer = null;
       state.projectLookupAt = Date.now();
       state.projectLookupPromise = loadProjectMemberships(new Set(missing))
-        .catch((error) => console.warn('[GPT Batch Manager] project labels unavailable', error))
-        .finally(() => { state.projectLookupPromise = null; });
+        .catch((error) => {
+          if (error.status === 401 || error.status === 403) {
+            state.projectLookupUnavailable = true;
+            return;
+          }
+          console.warn('[GPT Batch Manager] project labels unavailable', error);
+        })
+        .finally(() => {
+          state.projectLookupPromise = null;
+          scheduleDecorate();
+        });
     }, 800);
   }
 
@@ -331,11 +341,14 @@
         const page = await readProjectJson(url);
         addProjectConversations(page.items, project.descriptor, missing);
       } catch (error) {
+        if (error.status === 401 || error.status === 403) {
+          state.projectLookupUnavailable = true;
+          break;
+        }
         console.warn('[GPT Batch Manager] project conversation list unavailable', error);
       }
       requests += 1;
     }
-    scheduleDecorate();
   }
 
   function addProjectConversations(items, descriptor, missing) {
@@ -357,7 +370,11 @@
       if (!token) throw new Error('登录会话已失效');
       response = await request(token);
     }
-    if (!response.ok) throw new Error(`项目列表 HTTP ${response.status}`);
+    if (!response.ok) {
+      const error = new Error(`项目列表 HTTP ${response.status}`);
+      error.status = response.status;
+      throw error;
+    }
     return response.json();
 
     function request(accessToken) {

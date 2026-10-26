@@ -15,6 +15,9 @@
 <script>
   const fail = new URLSearchParams(location.search).has('fail');
   const requests = [];
+  let warnings = 0;
+  const originalWarn = console.warn;
+  console.warn = (...args) => { warnings += 1; originalWarn(...args); };
   window.fetch = async (input) => {
     const url = new URL(input.toString(), location.href);
     requests.push(url.pathname + url.search);
@@ -45,11 +48,19 @@
 <link rel="stylesheet" href="../styles.css">
 <script src="../content.js"></script>
 <script>
+  if (fail) setTimeout(() => {
+    const now = Date.now();
+    Date.now = () => now + 601000;
+    const row = document.createElement('div');
+    row.setAttribute('data-sidebar-item', 'true');
+    row.innerHTML = '<a href="/c/new-missing">New recent chat</a>';
+    document.getElementById('sidebar').appendChild(row);
+  }, 1400);
   setTimeout(() => {
     const tags = [...document.querySelectorAll('#sidebar a[href*="/c/"]')]
       .map((link) => link.querySelector('.gbm-project-tag'));
     const correct = fail ? tags.every((tag) => !tag) &&
-      requests.filter((request) => request.includes('/gizmos/snorlax/sidebar')).length === 1
+      requests.filter((request) => request.includes('/gizmos/snorlax/sidebar')).length === 1 && warnings === 0
       : tags[0]?.textContent === 'Alpha' && tags[1]?.textContent === 'Beta' &&
       tags[2]?.textContent === 'Gamma' && !tags[3] &&
       tags[0].style.backgroundColor !== tags[1].style.backgroundColor &&
