@@ -214,7 +214,7 @@
     tag.dataset.gbmProject = key;
     tag.textContent = project.name;
     tag.title = `项目：${project.name}`;
-    const hue = projectColor(key);
+    const hue = projectColor(project.name.trim().normalize('NFKC').toLocaleLowerCase());
     tag.style.backgroundColor = `hsl(${hue} 70% 92%)`;
     tag.style.color = `hsl(${hue} 55% 26%)`;
     tag.style.borderColor = `hsl(${hue} 45% 82%)`;

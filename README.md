@@ -15,7 +15,7 @@
 ### 功能
 
 - 在已显示的对话前添加复选框。
-- 项目内对话及“最近”中能识别出项目归属的同一对话，在复选框后显示小型彩色项目标签；项目折叠时也会按需读取项目对话列表，同一项目颜色固定，未归属项目的对话不显示标签。
+- 项目内对话及“最近”中能识别出项目归属的同一对话，在复选框后显示彩色项目标签；较长项目名会换行完整显示。项目折叠时也会按需读取项目对话列表，同一项目在展开或折叠后颜色一致，未归属项目的对话不显示标签。
 - “全选未归档”按页读取账号中的未归档对话，包括尚未出现在侧栏的对话；读取不完整时不会提交部分选择。
 - 批量删除、归档，最多同时处理 4 个请求。确认删除后先从侧栏隐藏所选对话，后台请求失败时恢复对应条目及勾选；归档在成功后隐藏。
 - 将选中对话的标题、ID 和链接导出为 JSON。导出文件**不包含对话正文**。
@@ -45,7 +45,7 @@ A lightweight Chrome / Edge extension for selecting and managing ChatGPT convers
 ### Features
 
 - Adds a checkbox to each conversation rendered in the sidebar.
-- Shows a small color-coded project label after the checkbox for chats in projects and matching chats under Recents, including when projects are collapsed. Each project keeps a consistent color; non-project chats have no label.
+- Shows a color-coded project label after the checkbox for chats in projects and matching chats under Recents, including when projects are collapsed. Long project names wrap instead of being truncated, and each project keeps the same color when expanded or collapsed. Non-project chats have no label.
 - **Select all unarchived** paginates through the account's unarchived conversations, including those not yet rendered in the sidebar. An incomplete fetch never becomes a partial “select all.”
 - Deletes or archives in batches with up to four concurrent requests. Confirmed deletions disappear from the sidebar immediately while requests run; failed deletions reappear with their checkboxes selected. Archives disappear after success.
 - Exports selected conversation titles, IDs, and URLs as JSON. The export **does not include message content**.

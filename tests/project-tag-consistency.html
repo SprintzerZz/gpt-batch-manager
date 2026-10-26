@@ -1,0 +1,55 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Project tag full name and stable color</title>
+<style>
+  nav { width: 300px; }
+  nav a[href*="/c/"] { display: flex; align-items: center; width: 280px; }
+</style>
+<nav id="sidebar">
+  <div class="group/folder-row"><span data-marquee-content="true">Other</span></div>
+  <div id="long-project" class="group/folder-row"><span data-marquee-content="true">这是一个需要完整显示的较长项目文件夹名称示例</span></div>
+  <div id="expanded-chat" data-sidebar-item="true"><a href="/c/expanded">Expanded chat</a></div>
+  <div>最近</div>
+  <div id="recent-chat" data-sidebar-item="true"><a href="/c/recent">Recent chat</a></div>
+</nav>
+<div id="result">PENDING</div>
+<script>
+  const projectName = '这是一个需要完整显示的较长项目文件夹名称示例';
+  window.fetch = async (input) => {
+    const url = new URL(input.toString(), location.href);
+    const json = (value) => new Response(JSON.stringify(value), {
+      headers: { 'Content-Type': 'application/json' }
+    });
+    if (url.pathname === '/api/auth/session') return json({ accessToken: 'test-token' });
+    if (url.pathname.endsWith('/gizmos/snorlax/sidebar')) return json({
+      items: [{ gizmo: { gizmo: { id: 'g-p-long', display: { name: projectName } },
+        conversations: { items: [{ id: 'recent' }] } } }], cursor: null
+    });
+    return new Response('{}', { status: 404 });
+  };
+</script>
+<link rel="stylesheet" href="../styles.css">
+<script src="../content.js"></script>
+<script>
+  setTimeout(() => {
+    const expandedTag = document.querySelector('#expanded-chat .gbm-project-tag');
+    const initialColor = expandedTag?.style.backgroundColor;
+    const initialFull = expandedTag?.textContent === projectName &&
+      expandedTag.scrollWidth <= expandedTag.clientWidth + 1 &&
+      expandedTag.getBoundingClientRect().height > 18;
+    document.getElementById('expanded-chat').remove();
+    const extra = document.createElement('div');
+    extra.className = 'group/folder-row';
+    extra.innerHTML = '<span data-marquee-content="true">Inserted project</span>';
+    document.getElementById('long-project').before(extra);
+    setTimeout(() => {
+      const recentTag = document.querySelector('#recent-chat .gbm-project-tag');
+      const correct = initialFull && recentTag?.textContent === projectName &&
+        recentTag.style.backgroundColor === initialColor &&
+        recentTag.scrollWidth <= recentTag.clientWidth + 1 &&
+        recentTag.getBoundingClientRect().height > 18;
+      document.getElementById('result').textContent = correct
+        ? 'GBM_TEST_PASS_STABLE_TAG' : 'FAIL: project tag name or color';
+    }, 1700);
+  }, 250);
+</script>

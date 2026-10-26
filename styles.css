@@ -16,7 +16,7 @@
 .gbm-project-tag {
   display: inline-block;
   box-sizing: border-box;
-  max-width: 88px;
+  max-width: min(170px, calc(100% - 30px));
   min-height: 18px;
   margin-right: 7px;
   padding: 0 8px;
@@ -25,9 +25,9 @@
   font: 500 11px/16px system-ui, sans-serif;
   text-align: center;
   vertical-align: 1px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  flex-shrink: 0;
   pointer-events: none;
 }
 .gbm-toolbar {
