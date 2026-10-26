@@ -15,6 +15,7 @@
     selectController: null,
     knownAllIds: null,
     projectById: new Map(),
+    projectColors: new Map(),
     hiddenIds: new Set(),
     hiddenRows: new WeakMap(),
     projectLookupTimer: null,
@@ -103,6 +104,10 @@
 
   function decorate() {
     const projects = sidebarProjects();
+    // 按侧栏顺序分配颜色，优先拉开相邻项目；已分配的名称在折叠后保持原色。
+    projects.slice().sort((a, b) => a.link === b.link ? 0
+      : a.link.compareDocumentPosition(b.link) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1)
+      .forEach((project) => projectColor(project.name));
     const links = allConversationLinks();
     const { byLink: projectByLink, recentLinks } = projectAssignments(links, projects);
     const directProjects = new Map();
@@ -186,13 +191,36 @@
     return projectByLink.get(link) || null;
   }
 
-  function projectColor(key) {
+  function projectColor(name) {
+    const key = name.trim().normalize('NFKC').toLocaleLowerCase();
+    if (state.projectColors.has(key)) return state.projectColors.get(key);
     let hash = 2166136261;
     for (const character of key) {
       hash ^= character.codePointAt(0);
       hash = Math.imul(hash, 16777619);
     }
-    return (hash >>> 0) % 360;
+    const preferred = (hash >>> 0) % 360;
+    const used = [...state.projectColors.values()];
+    if (!used.length) {
+      state.projectColors.set(key, preferred);
+      return preferred;
+    }
+    const distance = (a, b) => Math.min(Math.abs(a - b), 360 - Math.abs(a - b));
+    const previous = used.at(-1);
+    const candidates = Array.from({ length: 36 }, (_, index) => index * 10);
+    const available = candidates.filter((hue) => !used.includes(hue));
+    let best = available[0] ?? candidates[0];
+    let bestScore = -Infinity;
+    for (const hue of available.length ? available : candidates) {
+      const score = Math.min(...used.map((other) => distance(hue, other))) +
+        0.6 * distance(hue, previous) - 0.01 * distance(hue, preferred);
+      if (score > bestScore) {
+        best = hue;
+        bestScore = score;
+      }
+    }
+    state.projectColors.set(key, best);
+    return best;
   }
 
   function updateProjectTag(link, project) {
@@ -214,10 +242,10 @@
     tag.dataset.gbmProject = key;
     tag.textContent = project.name;
     tag.title = `项目：${project.name}`;
-    const hue = projectColor(project.name.trim().normalize('NFKC').toLocaleLowerCase());
-    tag.style.backgroundColor = `hsl(${hue} 70% 92%)`;
+    const hue = projectColor(project.name);
+    tag.style.backgroundColor = `hsl(${hue} 74% 88%)`;
     tag.style.color = `hsl(${hue} 55% 26%)`;
-    tag.style.borderColor = `hsl(${hue} 45% 82%)`;
+    tag.style.borderColor = `hsl(${hue} 50% 74%)`;
   }
 
   function scheduleProjectLookup(recentLinks) {

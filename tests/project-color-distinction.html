@@ -1,0 +1,34 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Nearby project colors remain distinguishable</title>
+<nav id="sidebar">
+  <div class="group/folder-row"><span data-marquee-content="true">项目涉及的基础知识点</span></div>
+  <div data-sidebar-item="true"><a href="/c/knowledge">WebSocket区别与场景</a></div>
+  <div class="group/folder-row"><span data-marquee-content="true">bitehouse</span></div>
+  <div data-sidebar-item="true"><a href="/c/bitehouse">定位WebSocket架构</a></div>
+</nav>
+<div id="result">PENDING</div>
+<script>
+  if (new URLSearchParams(location.search).has('crowded')) {
+    for (let index = 0; index < 18; index += 1) {
+      const row = document.createElement('div');
+      row.className = 'group/folder-row';
+      row.innerHTML = `<span data-marquee-content="true">Other ${index}</span>`;
+      document.getElementById('sidebar').prepend(row);
+    }
+  }
+</script>
+<link rel="stylesheet" href="../styles.css">
+<script src="../content.js"></script>
+<script>
+  setTimeout(() => {
+    const tags = [...document.querySelectorAll('.gbm-project-tag')];
+    const rgb = (tag) => getComputedStyle(tag).backgroundColor.match(/\d+/g).slice(0, 3).map(Number);
+    const first = tags[0] && rgb(tags[0]);
+    const second = tags[1] && rgb(tags[1]);
+    const separation = first && second && Math.hypot(...first.map((value, index) => value - second[index]));
+    document.getElementById('result').textContent = tags[0]?.textContent === '项目涉及的基础知识点' &&
+      tags[1]?.textContent === 'bitehouse' && separation > 65
+      ? 'GBM_TEST_PASS_DISTINCT_COLORS' : `FAIL: nearby project colors ${separation}`;
+  }, 350);
+</script>
