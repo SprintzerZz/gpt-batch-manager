@@ -1,0 +1,55 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Project rename and recent text guard</title>
+<nav id="sidebar">
+  <div>项目</div>
+  <div id="project-row" class="group/folder-row"><span data-marquee-content="true">旧项目</span></div>
+  <div id="project-chat" data-sidebar-item="true"><a href="/c/in-project">Project chat</a></div>
+  <div>最近</div>
+  <div id="recent-copy" data-sidebar-item="true"><a href="/c/in-project">Project chat copy</a></div>
+  <div id="long-recent-title"><svg width="12" height="12"></svg><span data-marquee-content="true">MySQL 保存可恢复的消息事实；Redis 管理会话序号、限流、在线路由、待确认投递及缓存；RabbitMQ 负责消息持久化任务与节点间异步通知。这个长段落是对话内容，不是项目文件夹名称。</span></div>
+  <div id="unfiled" data-sidebar-item="true"><a href="/c/unfiled">Unfiled chat</a></div>
+  <div id="api-chat" data-sidebar-item="true"><a href="/c/api-chat">API project chat</a></div>
+</nav>
+<div id="result">PENDING</div>
+<script>
+  const replace = new URLSearchParams(location.search).has('replace');
+  window.fetch = async (input) => {
+    const url = new URL(input.toString(), location.href);
+    const json = (value) => new Response(JSON.stringify(value), {
+      headers: { 'Content-Type': 'application/json' }
+    });
+    if (url.pathname === '/api/auth/session') return json({ accessToken: 'test-token' });
+    if (url.pathname.endsWith('/gizmos/snorlax/sidebar')) return json({
+      items: [{ gizmo: { gizmo: { id: 'g-p-renamed', display: { name: '新项目' } },
+        conversations: { items: [{ id: 'api-chat' }] } } }], cursor: null
+    });
+    return new Response('{}', { status: 404 });
+  };
+</script>
+<link rel="stylesheet" href="../styles.css">
+<script src="../content.js"></script>
+<script>
+  setTimeout(() => {
+    const first = document.querySelector('#project-chat .gbm-project-tag');
+    const color = first?.style.backgroundColor;
+    const initiallySafe = first?.textContent === '旧项目' &&
+      document.querySelector('#recent-copy .gbm-project-tag')?.textContent === '旧项目' &&
+      !document.querySelector('#unfiled .gbm-project-tag');
+    if (replace) {
+      document.getElementById('project-row').outerHTML =
+        '<div id="project-row" class="group/folder-row"><span data-marquee-content="true">新项目</span></div>';
+    } else {
+      document.querySelector('#project-row [data-marquee-content]').firstChild.data = '新项目';
+    }
+    setTimeout(() => {
+      const tags = ['#project-chat', '#recent-copy', '#api-chat']
+        .map((selector) => document.querySelector(`${selector} .gbm-project-tag`));
+      const correct = initiallySafe && tags.every((tag) => tag?.textContent === '新项目' &&
+        tag.style.backgroundColor === color) &&
+        !document.querySelector('#unfiled .gbm-project-tag');
+      document.getElementById('result').textContent = correct
+        ? 'GBM_TEST_PASS_RENAME_GUARD' : 'FAIL: renamed project or recent text guard';
+    }, 1750);
+  }, 250);
+</script>

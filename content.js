@@ -16,6 +16,8 @@
     knownAllIds: null,
     projectById: new Map(),
     projectColors: new Map(),
+    projectRows: new WeakMap(),
+    projectSlots: new Map(),
     hiddenIds: new Set(),
     hiddenRows: new WeakMap(),
     projectLookupTimer: null,
@@ -104,6 +106,7 @@
 
   function decorate() {
     const projects = sidebarProjects();
+    syncProjectNames(projects);
     // 按侧栏顺序分配颜色，优先拉开相邻项目；已分配的名称在折叠后保持原色。
     projects.slice().sort((a, b) => a.link === b.link ? 0
       : a.link.compareDocumentPosition(b.link) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1)
@@ -148,6 +151,30 @@
     });
     refresh();
     scheduleProjectLookup(recentLinks);
+  }
+
+  function syncProjectNames(projects) {
+    const currentNames = new Set(projects.map((project) => project.name));
+    for (const project of projects) {
+      const path = projectPath(project.link);
+      const slot = path || project.key.replace(/^(folder:\d+):.*$/, '$1');
+      const previous = state.projectRows.get(project.link) || state.projectSlots.get(slot);
+      const nextKey = path || project.key;
+      if (previous && previous.name !== project.name && !currentNames.has(previous.name)) {
+        const oldColor = state.projectColors.get(previous.name.trim().normalize('NFKC').toLocaleLowerCase());
+        if (oldColor !== undefined) {
+          state.projectColors.set(project.name.trim().normalize('NFKC').toLocaleLowerCase(), oldColor);
+        }
+        for (const [id, descriptor] of state.projectById) {
+          if (descriptor.key === previous.key || descriptor.name === previous.name) {
+            state.projectById.set(id, { name: project.name, key: nextKey });
+          }
+        }
+      }
+      const snapshot = { name: project.name, key: nextKey };
+      state.projectRows.set(project.link, snapshot);
+      state.projectSlots.set(slot, snapshot);
+    }
   }
 
   function projectAssignments(links, projects) {
@@ -706,9 +733,15 @@
 
   function sidebarProjects() {
     const root = state.sidebar || document;
+    const labels = [...root.querySelectorAll('span, div, h2, h3, [role="heading"]')]
+      .filter((node) => node.children.length === 0 && !node.closest(SELECTOR));
+    const recentHeading = labels.find((node) => /^(最近|Recents|Recent)$/i.test(node.textContent.trim()));
+    const projectHeading = labels.find((node) => /^(项目|Projects)$/i.test(node.textContent.trim()));
+    const after = (node, marker) => Boolean(marker &&
+      (marker.compareDocumentPosition(node) & Node.DOCUMENT_POSITION_FOLLOWING));
     const folderRows = [...root.querySelectorAll('[data-marquee-content="true"]')]
       .flatMap((title, index) => {
-        if (title.closest(SELECTOR)) return [];
+        if (title.closest(SELECTOR) || after(title, recentHeading)) return [];
         let row = title.closest('[class~="group/folder-row"]');
         // 新版侧栏可能只在操作菜单上保留 folder-row 类名。
         for (let node = title.parentElement, depth = 0; !row && node && depth < 7; node = node.parentElement, depth += 1) {
@@ -716,7 +749,8 @@
               node.querySelectorAll('[data-marquee-content="true"]').length === 1) row = node;
         }
         const name = title.textContent?.replace(/\s+/g, ' ').trim();
-        if (!row && name && !/^(项目|Projects|最近|Recents|Recent)$/i.test(name)) {
+        if (!row && name && projectHeading && after(title, projectHeading) &&
+            !/^(项目|Projects|最近|Recents|Recent)$/i.test(name)) {
           for (let node = title.parentElement, depth = 0; node && depth < 9 && !node.matches('nav, aside');
             node = node.parentElement, depth += 1) {
             if (node.querySelectorAll('[data-marquee-content="true"]').length !== 1 || node.querySelector(SELECTOR)) break;
@@ -748,6 +782,7 @@
     for (let section = heading.parentElement, depth = 0; section && depth < 5; section = section.parentElement, depth += 1) {
       const nodes = [...section.querySelectorAll(selector)].filter((node) => {
         if (node === heading || node.contains(heading) || !(heading.compareDocumentPosition(node) & Node.DOCUMENT_POSITION_FOLLOWING)) return false;
+        if (after(node, recentHeading)) return false;
         if (node.closest('.gbm-toolbar, .gbm-project-picker') || node.querySelector('a[href*="/c/"], .gbm-checkbox')) return false;
         const name = (node.innerText || node.getAttribute('aria-label') || '').replace(/\s+/g, ' ').trim();
         if (!name || /^(项目|Projects|新建项目|New project|查看更多|Show more)$/i.test(name)) return false;
@@ -1056,9 +1091,14 @@
     if (!nextSidebar || nextSidebar === state.sidebar) return;
     state.sidebarObserver?.disconnect();
     state.sidebar = nextSidebar;
-    state.sidebarObserver = new MutationObserver(scheduleDecorate);
+    state.sidebarObserver = new MutationObserver((records) => {
+      if (records.some((record) => record.type !== 'characterData' ||
+          record.target.parentElement?.closest('[data-marquee-content="true"], [class*="folder-row"], a[href*="/g/g-p-"]'))) {
+        scheduleDecorate();
+      }
+    });
     state.sidebarObserver.observe(state.sidebar, { childList: true, subtree: true,
-      attributes: true, attributeFilter: ['href'] });
+      characterData: true, attributes: true, attributeFilter: ['href'] });
     scheduleDecorate();
   }
 
