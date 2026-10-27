@@ -8,6 +8,10 @@
   <a href="#中文">中文</a> · <a href="#english">English</a>
 </p>
 
+<p align="center">
+  <a href="https://chromewebstore.google.com/detail/gpt-batch-manager/helnomgghmpdbdpofklcpcidaijbceag">Chrome 网上应用店 / Chrome Web Store</a>
+</p>
+
 ## 中文
 
 轻量化的 Chrome / Edge 扩展，在 ChatGPT 网页侧栏选择并批量管理对话。
@@ -22,6 +26,8 @@
 - 点击“移动”后弹出左侧项目选择框，识别项目链接或新版文件夹行，选定一个项目用于本次批量移动。移动时 ChatGPT 自身的项目菜单可能短暂出现，扩展会自动选择目标并核对侧栏结果。移动仅支持已显示在侧栏的对话；网页不支持的对话会保留勾选并显示原因。
 
 ### 安装
+
+Chrome 用户可直接从 [Chrome 网上应用店](https://chromewebstore.google.com/detail/gpt-batch-manager/helnomgghmpdbdpofklcpcidaijbceag)安装。也可以手动安装本地版本：
 
 1. 下载或克隆本仓库。
 2. 打开 Chrome 的 `chrome://extensions` 或 Edge 的 `edge://extensions`，开启“开发者模式”。
@@ -52,6 +58,8 @@ A lightweight Chrome / Edge extension for selecting and managing ChatGPT convers
 - Move opens a picker of projects from the sidebar, including newer folder-style project rows. Choose one destination for the batch. ChatGPT's own project menu may appear briefly while the extension selects the destination and checks the sidebar result. Only chats rendered in the sidebar and eligible for moving are supported; failed items remain selected.
 
 ### Install
+
+Chrome users can install directly from the [Chrome Web Store](https://chromewebstore.google.com/detail/gpt-batch-manager/helnomgghmpdbdpofklcpcidaijbceag). To install a local copy instead:
 
 1. Download or clone this repository.
 2. Open `chrome://extensions` in Chrome or `edge://extensions` in Edge and enable Developer mode.
