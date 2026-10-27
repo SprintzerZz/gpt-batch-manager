@@ -285,12 +285,9 @@
       state.projectLookupTimer = null;
       state.projectLookupAt = Date.now();
       state.projectLookupPromise = loadProjectMemberships(new Set(missing))
-        .catch((error) => {
-          if (error.status === 401 || error.status === 403) {
-            state.projectLookupUnavailable = true;
-            return;
-          }
-          console.warn('[GPT Batch Manager] project labels unavailable', error);
+        .catch(() => {
+          // 这是可选的补全查询；失败时本页停止重试，已能从侧栏识别的标签不受影响。
+          state.projectLookupUnavailable = true;
         })
         .finally(() => {
           state.projectLookupPromise = null;
@@ -340,12 +337,9 @@
       try {
         const page = await readProjectJson(url);
         addProjectConversations(page.items, project.descriptor, missing);
-      } catch (error) {
-        if (error.status === 401 || error.status === 403) {
-          state.projectLookupUnavailable = true;
-          break;
-        }
-        console.warn('[GPT Batch Manager] project conversation list unavailable', error);
+      } catch {
+        state.projectLookupUnavailable = true;
+        break;
       }
       requests += 1;
     }
@@ -753,7 +747,6 @@
     const labels = [...root.querySelectorAll('span, div, h2, h3, [role="heading"]')]
       .filter((node) => node.children.length === 0 && !node.closest(SELECTOR));
     const recentHeading = labels.find((node) => /^(最近|Recents|Recent)$/i.test(node.textContent.trim()));
-    const projectHeading = labels.find((node) => /^(项目|Projects)$/i.test(node.textContent.trim()));
     const after = (node, marker) => Boolean(marker &&
       (marker.compareDocumentPosition(node) & Node.DOCUMENT_POSITION_FOLLOWING));
     const folderRows = [...root.querySelectorAll('[data-marquee-content="true"]')]
@@ -766,16 +759,10 @@
               node.querySelectorAll('[data-marquee-content="true"]').length === 1) row = node;
         }
         const name = title.textContent?.replace(/\s+/g, ' ').trim();
-        if (!row && name && projectHeading && after(title, projectHeading) &&
-            !/^(项目|Projects|最近|Recents|Recent)$/i.test(name)) {
-          for (let node = title.parentElement, depth = 0; node && depth < 9 && !node.matches('nav, aside');
-            node = node.parentElement, depth += 1) {
-            if (node.querySelectorAll('[data-marquee-content="true"]').length !== 1 || node.querySelector(SELECTOR)) break;
-            if (node.querySelector('svg') && !node.closest('.gbm-toolbar, .gbm-project-picker')) row = node;
-          }
-        }
-        // 对话预览也可能带 folder-row 样式和 marquee 标记；包含对话链接的行不是项目。
-        return row && name && !row.querySelector(SELECTOR) && !row.closest('.gbm-project-picker')
+        // 普通 SVG 可能是新建对话的加载图标，不能据此推断它是项目文件夹。
+        // 新建对话时标题会先于链接出现；对话列表项即使暂时没有链接也不是项目。
+        return row && name && !row.closest('[data-sidebar-item="true"]') &&
+          !row.querySelector(SELECTOR) && !row.closest('.gbm-project-picker')
           ? [{ name, link: row, key: `folder:${index}:${name}` }]
           : [];
       });

@@ -13,7 +13,8 @@
 </nav>
 <div id="result">PENDING</div>
 <script>
-  const fail = new URLSearchParams(location.search).has('fail');
+  const params = new URLSearchParams(location.search);
+  const fail = params.has('fail') || params.has('status');
   const requests = [];
   let warnings = 0;
   const originalWarn = console.warn;
@@ -26,7 +27,7 @@
     });
     if (url.pathname === '/api/auth/session') return json({ accessToken: 'fixture-token' });
     if (url.pathname.endsWith('/gizmos/snorlax/sidebar')) {
-      if (fail) return new Response('{}', { status: 403 });
+      if (fail) return new Response('{}', { status: Number(params.get('status')) || 403 });
       if (url.searchParams.get('cursor') === 'next') return json({ items: [{ gizmo: {
         gizmo: { id: 'g-p-beta', display: { name: 'Beta' } },
         conversations: { items: [{ id: 'second' }], cursor: null }

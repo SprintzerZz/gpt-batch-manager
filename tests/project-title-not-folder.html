@@ -4,6 +4,14 @@
 <nav id="sidebar">
   <div>项目</div>
   <div class="group/folder-row"><span data-marquee-content="true">简历拷打</span></div>
+  <div id="loading-preview">
+    <svg width="12" height="12"><circle cx="6" cy="6" r="4"></circle></svg>
+    <span data-marquee-content="true">高低水位线为什么要两个？到高水位会自动拒绝写吗？</span>
+  </div>
+  <div class="group/folder-row" data-sidebar-item="true" id="streaming-title">
+    <span data-marquee-content="true">简历评分，真实性和架构合理性分析</span>
+    <span class="group-hover/folder-row"><button type="button">更多</button></span>
+  </div>
   <div class="group/folder-row" data-sidebar-item="true">
     <span data-marquee-content="true">简历评分，真实性和架构合理性分析</span>
     <span class="group-hover/folder-row"><button type="button">更多</button></span>
@@ -21,6 +29,8 @@
     const tags = [...document.querySelectorAll('#sidebar .gbm-project-tag')];
     const correct = tags.length === 1 && tags[0].textContent === '简历拷打' &&
       link.querySelector('.gbm-project-tag') === tags[0] &&
+      !document.querySelector('#streaming-title .gbm-project-tag') &&
+      !document.querySelector('#loading-preview .gbm-project-tag') &&
       link.querySelector('.gbm-checkbox') &&
       !document.querySelector('a[href="/c/other"] .gbm-project-tag');
     document.getElementById('result').textContent = correct
