@@ -1,1 +1,3 @@
 dist/
+.chrome-test-profile*/
+.edge-test-profile/

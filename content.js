@@ -774,7 +774,8 @@
             if (node.querySelector('svg') && !node.closest('.gbm-toolbar, .gbm-project-picker')) row = node;
           }
         }
-        return row && name && !row.closest('.gbm-project-picker')
+        // 对话预览也可能带 folder-row 样式和 marquee 标记；包含对话链接的行不是项目。
+        return row && name && !row.querySelector(SELECTOR) && !row.closest('.gbm-project-picker')
           ? [{ name, link: row, key: `folder:${index}:${name}` }]
           : [];
       });

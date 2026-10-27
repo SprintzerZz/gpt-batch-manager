@@ -1,0 +1,29 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Conversation title must not become a project</title>
+<nav id="sidebar">
+  <div>项目</div>
+  <div class="group/folder-row"><span data-marquee-content="true">简历拷打</span></div>
+  <div class="group/folder-row" data-sidebar-item="true">
+    <span data-marquee-content="true">简历评分，真实性和架构合理性分析</span>
+    <span class="group-hover/folder-row"><button type="button">更多</button></span>
+    <a href="/c/resume-review">通俗解释消息</a>
+  </div>
+  <div>最近</div>
+  <div data-sidebar-item="true"><a href="/c/other">其他对话</a></div>
+</nav>
+<div id="result">PENDING</div>
+<link rel="stylesheet" href="../styles.css">
+<script src="../content.js"></script>
+<script>
+  setTimeout(() => {
+    const link = document.querySelector('a[href="/c/resume-review"]');
+    const tags = [...document.querySelectorAll('#sidebar .gbm-project-tag')];
+    const correct = tags.length === 1 && tags[0].textContent === '简历拷打' &&
+      link.querySelector('.gbm-project-tag') === tags[0] &&
+      link.querySelector('.gbm-checkbox') &&
+      !document.querySelector('a[href="/c/other"] .gbm-project-tag');
+    document.getElementById('result').textContent = correct
+      ? 'GBM_TEST_PASS_TITLE_NOT_FOLDER' : `FAIL: ${tags.map((tag) => tag.textContent).join(', ')}`;
+  }, 450);
+</script>

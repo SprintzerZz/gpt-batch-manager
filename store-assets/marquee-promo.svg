@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="560" viewBox="0 0 1400 560">
+  <rect width="1400" height="560" fill="#064B45"/>
+  <circle cx="1248" cy="-70" r="290" fill="#2BC2A7" opacity=".13"/>
+  <circle cx="120" cy="590" r="260" fill="#58D6B8" opacity=".1"/>
+  <circle cx="770" cy="25" r="88" fill="#B2F8E3" opacity=".05"/>
+
+  <g transform="translate(90 94) scale(.75)">
+    <rect width="128" height="128" rx="27" fill="#14A68F"/>
+    <g transform="translate(-2 -2)">
+      <path d="M36 22h41c12 0 21 9 21 21v21c0 12-9 21-21 21H43L30 94V82c-9-3-15-11-15-21V43c0-12 9-21 21-21Z" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round" opacity=".7"/>
+      <path d="M54 42h38c11 0 19 8 19 19v22c0 11-8 19-19 19H58l-14 10V98c-6-4-10-10-10-18V61c0-11 9-19 20-19Z" fill="#FFFFFF"/>
+      <path d="m52 72 14 13 27-28" fill="none" stroke="#087A6A" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+  </g>
+  <text x="90" y="262" fill="#FFFFFF" font-family="Segoe UI, Arial, sans-serif" font-size="57" font-weight="700">GPT Batch Manager</text>
+  <text x="93" y="318" fill="#BDE9DF" font-family="Segoe UI, Arial, sans-serif" font-size="27">Organize ChatGPT chats, together.</text>
+  <g font-family="Segoe UI, Arial, sans-serif" font-size="17" font-weight="600">
+    <rect x="91" y="366" width="109" height="40" rx="20" fill="#0D8F7C"/>
+    <rect x="211" y="366" width="102" height="40" rx="20" fill="#0D8F7C"/>
+    <rect x="324" y="366" width="111" height="40" rx="20" fill="#0D8F7C"/>
+    <rect x="446" y="366" width="103" height="40" rx="20" fill="#0D8F7C"/>
+    <text x="145" y="392" text-anchor="middle" fill="#FFFFFF" font-family="Arial, sans-serif">Archive</text>
+    <text x="262" y="392" text-anchor="middle" fill="#FFFFFF" font-family="Arial, sans-serif">Move</text>
+    <text x="379" y="392" text-anchor="middle" fill="#FFFFFF" font-family="Arial, sans-serif">Export</text>
+    <text x="497" y="392" text-anchor="middle" fill="#FFFFFF" font-family="Arial, sans-serif">Delete</text>
+  </g>
+
+  <g transform="translate(758 55)">
+    <rect width="555" height="450" rx="25" fill="#EAF8F4"/>
+    <rect x="0" y="0" width="555" height="64" rx="25" fill="#FFFFFF"/>
+    <rect x="0" y="40" width="555" height="24" fill="#FFFFFF"/>
+    <circle cx="32" cy="32" r="6" fill="#E8B4A7"/><circle cx="52" cy="32" r="6" fill="#ECD28A"/><circle cx="72" cy="32" r="6" fill="#8BCDB7"/>
+    <text x="106" y="38" fill="#244E49" font-family="Segoe UI, Arial, sans-serif" font-size="20" font-weight="700">Conversations</text>
+
+    <g font-family="Segoe UI, Arial, sans-serif" font-size="17" fill="#244E49">
+      <rect x="25" y="81" width="505" height="60" rx="12" fill="#FFFFFF"/>
+      <rect x="25" y="151" width="505" height="60" rx="12" fill="#FFFFFF"/>
+      <rect x="25" y="221" width="505" height="60" rx="12" fill="#FFFFFF"/>
+      <rect x="25" y="291" width="505" height="60" rx="12" fill="#FFFFFF"/>
+      <g fill="#0D9C85">
+        <rect x="42" y="99" width="24" height="24" rx="6"/>
+        <rect x="42" y="169" width="24" height="24" rx="6"/>
+        <rect x="42" y="239" width="24" height="24" rx="6"/>
+      </g>
+      <rect x="42" y="309" width="24" height="24" rx="6" fill="#FFFFFF" stroke="#92ACA6" stroke-width="2"/>
+      <g fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m47 110 5 5 9-10"/><path d="m47 180 5 5 9-10"/><path d="m47 250 5 5 9-10"/>
+      </g>
+      <text x="83" y="118" font-family="Arial, sans-serif">Research notes</text>
+      <text x="83" y="188" font-family="Arial, sans-serif">Project planning</text>
+      <text x="83" y="258" font-family="Arial, sans-serif">Code review</text>
+      <text x="83" y="328" font-family="Arial, sans-serif">Writing ideas</text>
+      <rect x="365" y="94" width="145" height="32" rx="16" fill="#DDF4EC"/>
+      <rect x="365" y="164" width="145" height="32" rx="16" fill="#EDE5FA"/>
+      <rect x="365" y="234" width="145" height="32" rx="16" fill="#FFF0D9"/>
+      <text x="437" y="115" text-anchor="middle" font-size="14" fill="#087A6A" font-family="Arial, sans-serif">Research</text>
+      <text x="437" y="185" text-anchor="middle" font-size="14" fill="#6D4AA5" font-family="Arial, sans-serif">Planning</text>
+      <text x="437" y="255" text-anchor="middle" font-size="14" fill="#A76C19" font-family="Arial, sans-serif">Development</text>
+    </g>
+    <rect x="25" y="372" width="505" height="58" rx="14" fill="#075E56"/>
+    <text x="47" y="408" fill="#FFFFFF" font-family="Segoe UI, Arial, sans-serif" font-size="17" font-weight="700">3 selected</text>
+    <rect x="345" y="385" width="171" height="32" rx="9" fill="#23B99B"/>
+    <text x="430" y="406" text-anchor="middle" fill="#064B45" font-family="Arial, sans-serif" font-size="14" font-weight="700">Move to project</text>
+  </g>
+</svg>
