@@ -1,6 +1,9 @@
 (function () {
   'use strict';
 
+  let language = 'zh-CN';
+  const t = (chinese, english) => language === 'en' ? english : chinese;
+
   const state = {
     selected: new Map(),
     toolbar: null,
@@ -53,15 +56,15 @@
     toolbar.className = 'gbm-toolbar';
     toolbar.innerHTML = `
       <div class="gbm-toolbar__top">
-        <label class="gbm-select-all"><input type="checkbox" data-gbm-select-all> 全选未归档</label>
-        <span class="gbm-count">已选择 0 项</span>
-        <button class="gbm-close" type="button" title="取消选择">×</button>
+        <label class="gbm-select-all"><input type="checkbox" data-gbm-select-all> <span data-gbm-select-label></span></label>
+        <span class="gbm-count"></span>
+        <button class="gbm-close" type="button">×</button>
       </div>
       <div class="gbm-actions">
-        <button type="button" data-gbm-action="archive">归档</button>
-        <button type="button" data-gbm-action="move">移动</button>
-        <button type="button" data-gbm-action="export">导出</button>
-        <button type="button" class="gbm-danger" data-gbm-action="delete">删除</button>
+        <button type="button" data-gbm-action="archive"></button>
+        <button type="button" data-gbm-action="move"></button>
+        <button type="button" data-gbm-action="export"></button>
+        <button type="button" class="gbm-danger" data-gbm-action="delete"></button>
       </div>
       <div class="gbm-status" role="status" aria-live="polite"></div>`;
 
@@ -76,7 +79,16 @@
 
     document.body.appendChild(toolbar);
     state.toolbar = toolbar;
+    updateToolbarLabels(toolbar);
     return toolbar;
+  }
+
+  function updateToolbarLabels(toolbar) {
+    toolbar.querySelector('[data-gbm-select-label]').textContent = t('全选未归档', 'Select all unarchived');
+    toolbar.querySelector('.gbm-close').title = t('取消选择', 'Clear selection');
+    toolbar.querySelectorAll('[data-gbm-action]').forEach((button) => {
+      button.textContent = actionLabel(button.dataset.gbmAction);
+    });
   }
 
   function getConversationLinks() {
@@ -132,12 +144,16 @@
         return;
       }
       updateProjectTag(link, directProjects.get(link) || state.projectById.get(id));
-      if (link.dataset.gbmReady) return;
+      if (link.dataset.gbmReady) {
+        const box = link.querySelector('.gbm-checkbox');
+        if (box) box.title = t('选择此对话', 'Select this conversation');
+        return;
+      }
       link.dataset.gbmReady = '1';
       const box = document.createElement('input');
       box.type = 'checkbox';
       box.className = 'gbm-checkbox';
-      box.title = '选择此对话';
+      box.title = t('选择此对话', 'Select this conversation');
       box.checked = state.selected.has(id);
       box.addEventListener('click', (event) => event.stopPropagation());
       box.addEventListener('change', () => {
@@ -266,10 +282,10 @@
       if (box) box.after(tag);
       else link.prepend(tag);
     }
+    tag.title = t(`项目：${project.name}`, `Project: ${project.name}`);
     if (tag.dataset.gbmProject === key && tag.textContent === project.name) return;
     tag.dataset.gbmProject = key;
     tag.textContent = project.name;
-    tag.title = `项目：${project.name}`;
     const hue = projectColor(project.name);
     tag.style.backgroundColor = `hsl(${hue} 74% 88%)`;
     tag.style.color = `hsl(${hue} 55% 26%)`;
@@ -361,7 +377,7 @@
     if (response.status === 401) {
       state.accessToken = null;
       token = await getAccessToken();
-      if (!token) throw new Error('登录会话已失效');
+      if (!token) throw new Error(t('登录会话已失效', 'The ChatGPT session has expired'));
       response = await request(token);
     }
     if (!response.ok) {
@@ -384,7 +400,7 @@
     const count = state.selected.size;
     const toolbar = ensureToolbar();
     toolbar.classList.toggle('gbm-toolbar--visible', count > 0 || Boolean(toolbar.querySelector('.gbm-status').textContent));
-    toolbar.querySelector('.gbm-count').textContent = `已选择 ${count} 项`;
+    toolbar.querySelector('.gbm-count').textContent = t(`已选择 ${count} 项`, `Selected ${count}`);
     const boxes = getConversationLinks().map((link) => link.querySelector('.gbm-checkbox')).filter(Boolean);
     boxes.forEach((box) => {
       const link = box.closest('a');
@@ -427,19 +443,19 @@
     state.selectController = controller;
     const checkbox = ensureToolbar().querySelector('[data-gbm-select-all]');
     checkbox.disabled = true;
-    setStatus('正在读取全部未归档对话…');
+    setStatus(t('正在读取全部未归档对话…', 'Loading all unarchived conversations…'));
     try {
       const all = await fetchAllConversations((loaded, total) => {
-        setStatus(`正在读取对话：${loaded}${total === null ? '' : `/${total}`}`);
+        setStatus(t(`正在读取对话：${loaded}${total === null ? '' : `/${total}`}`, `Loading conversations: ${loaded}${total === null ? '' : `/${total}`}`));
       }, controller.signal);
       if (controller.signal.aborted) return;
       const ids = new Set(all.keys());
       state.knownAllIds = ids;
       state.selected = all;
-      setStatus(`已选择全部 ${ids.size} 个未归档对话`);
+      setStatus(t(`已选择全部 ${ids.size} 个未归档对话`, `Selected all ${ids.size} unarchived conversations`));
     } catch (error) {
       if (error.name !== 'AbortError') {
-        const message = `全选失败：${error.message}`;
+        const message = t(`全选失败：${error.message}`, `Could not select all: ${error.message}`);
         setStatus(message);
         notify(message);
       }
@@ -461,7 +477,7 @@
       url.searchParams.set('order', 'updated');
       url.searchParams.set('is_archived', 'false');
       let token = await getAccessToken();
-      if (!token) throw new Error('无法获取 ChatGPT 登录会话');
+      if (!token) throw new Error(t('无法获取 ChatGPT 登录会话', 'Could not get the ChatGPT session'));
       let response = await fetch(url, {
         credentials: 'include',
         signal,
@@ -470,16 +486,16 @@
       if (response.status === 401) {
         state.accessToken = null;
         token = await getAccessToken();
-        if (!token) throw new Error('登录会话已失效');
+        if (!token) throw new Error(t('登录会话已失效', 'The ChatGPT session has expired'));
         response = await fetch(url, {
           credentials: 'include',
           signal,
           headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' }
         });
       }
-      if (!response.ok) throw new Error(`列表请求 HTTP ${response.status}`);
+      if (!response.ok) throw new Error(t(`列表请求 HTTP ${response.status}`, `Conversation list request returned HTTP ${response.status}`));
       const page = await response.json();
-      if (!Array.isArray(page.items)) throw new Error('对话列表格式发生变化');
+      if (!Array.isArray(page.items)) throw new Error(t('对话列表格式发生变化', 'The conversation list format changed'));
       for (const item of page.items) {
         if (typeof item.id !== 'string' || state.hiddenIds.has(item.id)) continue;
         const link = findConversationLink(item.id);
@@ -494,7 +510,7 @@
       offset += page.items.length;
       onProgress(conversations.size, total);
       if (page.items.length === 0) {
-        if (total !== null && offset < total) throw new Error(`只读取到 ${offset}/${total} 个对话`);
+        if (total !== null && offset < total) throw new Error(t(`只读取到 ${offset}/${total} 个对话`, `Only loaded ${offset}/${total} conversations`));
         break;
       }
       if (total !== null ? offset >= total : page.items.length < LIST_PAGE_SIZE) break;
@@ -519,7 +535,7 @@
       exportedAt: new Date().toISOString()
     }));
     download(`gpt-conversations-${dateStamp()}.json`, JSON.stringify(data, null, 2), 'application/json');
-    notify(`已导出 ${data.length} 个对话`);
+    notify(t(`已导出 ${data.length} 个对话`, `Exported ${data.length} conversations`));
   }
 
   async function runAction(action) {
@@ -527,11 +543,11 @@
     if (!items.length || state.busy) return;
     if (action === 'export') return exportSelected();
     if (action === 'move' && items.some((item) => !findConversationLink(item.id))) {
-      setStatus('移动目前只支持已显示在侧栏的对话；请缩小选择范围');
+      setStatus(t('移动目前只支持已显示在侧栏的对话；请缩小选择范围', 'Only conversations visible in the sidebar can be moved. Narrow your selection.'));
       return;
     }
     if (action === 'delete') {
-      if (!confirm(`确定删除选中的 ${items.length} 个对话吗？删除后可能无法恢复。`)) return;
+      if (!confirm(t(`确定删除选中的 ${items.length} 个对话吗？删除后可能无法恢复。`, `Delete ${items.length} selected conversations? This may be permanent.`))) return;
       return runOptimisticDelete(items);
     }
 
@@ -549,7 +565,7 @@
         return;
       }
       const project = choice?.project;
-      setStatus(`${actionLabel(action)}中：0/${items.length}`);
+      setStatus(t(`${actionLabel(action)}中：0/${items.length}`, `${actionLabel(action)} in progress: 0/${items.length}`));
       let next = 0;
       let stopped = false;
       let submitted = 0;
@@ -568,19 +584,19 @@
               state.projectById.set(item.id, { name: project.name, key: projectPath(project.link) || project.key });
             }
           } else {
-            failures.push({ id: item.id, reason: result.reason || '无法完成操作' });
+            failures.push({ id: item.id, reason: result.reason || t('无法完成操作', 'Could not complete the operation') });
             if (result.stop) stopped = true;
           }
-          setStatus(`${actionLabel(action)}中：${completed}/${items.length}`);
+          setStatus(t(`${actionLabel(action)}中：${completed}/${items.length}`, `${actionLabel(action)} in progress: ${completed}/${items.length}`));
         }
       };
       const concurrency = action === 'move' ? 1 : Math.min(BATCH_CONCURRENCY, items.length);
       await Promise.all(Array.from({ length: concurrency }, () => worker()));
       const failure = failures.at(-1)?.reason || '';
       const message = failure
-        ? `${actionLabel(action)}成功 ${completed}/${items.length}；失败：${failure}`
-        : submitted ? `移动已提交 ${completed}/${items.length}；${submitted} 项未收到页面确认，请到目标项目核对`
-        : `${actionLabel(action)}成功 ${completed}/${items.length}`;
+        ? t(`${actionLabel(action)}成功 ${completed}/${items.length}；失败：${failure}`, `${actionLabel(action)}: ${completed}/${items.length} succeeded. Failure: ${failure}`)
+        : submitted ? t(`移动已提交 ${completed}/${items.length}；${submitted} 项未收到页面确认，请到目标项目核对`, `Move submitted for ${completed}/${items.length}. Check the destination project for ${submitted} unconfirmed items.`)
+        : t(`${actionLabel(action)}成功 ${completed}/${items.length}`, `${actionLabel(action)}: ${completed}/${items.length} succeeded`);
       setStatus(message);
       notify(message);
     } finally {
@@ -618,7 +634,7 @@
       state.selected.delete(item.id);
       state.knownAllIds?.delete(item.id);
     }
-    setStatus(`正在后台删除：0/${items.length}`);
+    setStatus(t(`正在后台删除：0/${items.length}`, `Deleting in the background: 0/${items.length}`));
     refresh();
 
     let next = 0;
@@ -652,19 +668,19 @@
             confirmed.add(item.id);
             state.projectById.delete(item.id);
           } else {
-            failures.push(result.reason || '无法完成操作');
+            failures.push(result.reason || t('无法完成操作', 'Could not complete the operation'));
             restore(pending.get(item.id));
             if (result.stop) stopped = true;
           }
-          setStatus(`后台删除：${completed}/${items.length}${failures.length ? `；已恢复 ${failures.length} 项` : ''}`);
+          setStatus(t(`后台删除：${completed}/${items.length}${failures.length ? `；已恢复 ${failures.length} 项` : ''}`, `Deleting: ${completed}/${items.length}${failures.length ? `. Restored ${failures.length}` : ''}`));
         }
       };
       await Promise.all(Array.from({ length: Math.min(BATCH_CONCURRENCY, items.length) }, () => worker()));
       for (const item of items.slice(next)) restore(pending.get(item.id));
       const restored = items.length - completed;
       const message = restored
-        ? `删除成功 ${completed}/${items.length}；${restored} 项已恢复${failures.length ? `（${failures.at(-1)}）` : ''}`
-        : `删除成功 ${completed}/${items.length}`;
+        ? t(`删除成功 ${completed}/${items.length}；${restored} 项已恢复${failures.length ? `（${failures.at(-1)}）` : ''}`, `Deleted ${completed}/${items.length}. Restored ${restored}${failures.length ? ` (${failures.at(-1)})` : ''}`)
+        : t(`删除成功 ${completed}/${items.length}`, `Deleted ${completed}/${items.length}`);
       setStatus(message);
       notify(message);
     } catch (error) {
@@ -672,7 +688,7 @@
       for (const entry of pending.values()) {
         if (!confirmed.has(entry.item.id)) restore(entry);
       }
-      const message = `删除成功 ${completed}/${items.length}；其余对话已恢复（后台删除中断）`;
+      const message = t(`删除成功 ${completed}/${items.length}；其余对话已恢复（后台删除中断）`, `Deleted ${completed}/${items.length}. Deletion was interrupted and remaining conversations were restored.`);
       setStatus(message);
       notify(message);
     } finally {
@@ -686,7 +702,7 @@
 
   async function moveConversation(item, project) {
     const link = findConversationLink(item.id) || item.link;
-    if (!link || !link.isConnected) return { ok: false, reason: '对话未显示在侧栏' };
+    if (!link || !link.isConnected) return { ok: false, reason: t('对话未显示在侧栏', 'The conversation is not visible in the sidebar') };
     const row = conversationRow(link);
     const snapshot = { id: item.id, row, parent: row.parentElement, href: link.href,
       projectPath: projectPath(project.link) };
@@ -708,7 +724,7 @@
       }
       if (!option) {
         if (await waitForMove(snapshot, 8)) return { ok: true };
-        return { ok: false, reason: `“${item.title}”的菜单中没有“移至项目”；此对话可能不支持移动` };
+        return { ok: false, reason: t(`“${item.title}”的菜单中没有“移至项目”；此对话可能不支持移动`, `The menu for “${item.title}” has no Move to project option`) };
       }
       option.dispatchEvent(new PointerEvent('pointermove', {
         bubbles: true, cancelable: true, pointerType: 'mouse', button: 0, isPrimary: true
@@ -721,8 +737,8 @@
       if (matches.length !== 1) {
         if (await waitForMove(snapshot, 8)) return { ok: true };
         return { ok: false, reason: matches.length
-          ? `找到多个同名项目“${project.name}”，无法安全选择`
-          : `移动菜单中未找到项目“${project.name}”` };
+          ? t(`找到多个同名项目“${project.name}”，无法安全选择`, `Multiple projects are named “${project.name}”`)
+          : t(`移动菜单中未找到项目“${project.name}”`, `Could not find “${project.name}” in the move menu`) };
       }
       matches[0].click();
       if (await waitForMove(snapshot, 10)) return { ok: true };
@@ -732,14 +748,14 @@
     const source = link.closest('[draggable="true"]');
     const target = sidebarProjects().find((item) => item.key === project.key)?.link ||
       (project.link.isConnected ? project.link : null);
-    if (!source || !target) return { ok: false, reason: '未找到对话的更多菜单或可拖放的项目行' };
+    if (!source || !target) return { ok: false, reason: t('未找到对话的更多菜单或可拖放的项目行', 'Could not find the conversation menu or a drop target') };
     try {
       dragToProject(source, target);
       if (await waitForMove(snapshot)) return { ok: true };
     } catch (error) {
       console.warn('[GPT Batch Manager] drag failed', error);
     }
-    return { ok: false, reason: '未找到对话的更多菜单，拖放也未生效' };
+    return { ok: false, reason: t('未找到对话的更多菜单，拖放也未生效', 'Could not find the conversation menu, and dragging did not work') };
   }
 
   function sidebarProjects() {
@@ -809,22 +825,22 @@
       const overlay = document.createElement('div');
       overlay.className = 'gbm-project-picker';
       overlay.setAttribute('role', 'dialog');
-      overlay.setAttribute('aria-label', '选择目标项目');
+      overlay.setAttribute('aria-label', t('选择目标项目', 'Choose a destination project'));
       overlay.setAttribute('aria-modal', 'true');
       const panel = document.createElement('div');
       panel.className = 'gbm-project-picker__panel';
       const title = document.createElement('div');
       title.className = 'gbm-project-picker__title';
-      title.textContent = '移动到项目';
+      title.textContent = t('移动到项目', 'Move to project');
       const search = document.createElement('input');
       search.type = 'search';
-      search.placeholder = '搜索左侧项目';
-      search.setAttribute('aria-label', '搜索项目');
+      search.placeholder = t('搜索左侧项目', 'Search sidebar projects');
+      search.setAttribute('aria-label', t('搜索项目', 'Search projects'));
       const list = document.createElement('div');
       list.className = 'gbm-project-picker__list';
       if (!projects.length) {
         const empty = document.createElement('p');
-        empty.textContent = '未识别到左侧项目。请展开“项目”列表并刷新 ChatGPT 页面后重试。';
+        empty.textContent = t('未识别到左侧项目。请展开“项目”列表并刷新 ChatGPT 页面后重试。', 'No sidebar projects found. Expand Projects, refresh ChatGPT, and try again.');
         list.appendChild(empty);
         search.disabled = true;
       }
@@ -839,7 +855,7 @@
       const cancel = document.createElement('button');
       cancel.type = 'button';
       cancel.className = 'gbm-project-picker__cancel';
-      cancel.textContent = projects.length ? '取消' : '关闭';
+      cancel.textContent = projects.length ? t('取消', 'Cancel') : t('关闭', 'Close');
       cancel.addEventListener('click', () => finish(null));
       search.addEventListener('input', () => {
         const query = search.value.trim().toLocaleLowerCase();
@@ -853,8 +869,8 @@
         document.removeEventListener('keydown', onKeydown, true);
         overlay.remove();
         resolve({ project, reason: projects.length
-          ? '已取消移动，所选对话保持不变'
-          : '未识别到左侧项目；请展开“项目”列表并刷新页面' });
+          ? t('已取消移动，所选对话保持不变', 'Move canceled. Conversations remain selected.')
+          : t('未识别到左侧项目；请展开“项目”列表并刷新页面', 'No sidebar projects found. Expand Projects and refresh the page.') });
       }
       document.addEventListener('keydown', onKeydown, true);
       panel.append(title, search, list, cancel);
@@ -924,7 +940,7 @@
   async function sendConversationRequest(url, method, payload) {
     try {
       let accessToken = await getAccessToken();
-      if (!accessToken) return { ok: false, stop: true, reason: '无法获取 ChatGPT 登录会话，请刷新网页后重试' };
+      if (!accessToken) return { ok: false, stop: true, reason: t('无法获取 ChatGPT 登录会话，请刷新网页后重试', 'Could not get the ChatGPT session. Refresh and try again.') };
       let response = await send(accessToken);
       if (response.status === 401) {
         state.accessToken = null;
@@ -933,10 +949,10 @@
       }
       if (response.ok) return { ok: true };
       const stop = [401, 403, 404, 429].includes(response.status);
-      return { ok: false, stop, reason: `HTTP ${response.status}${response.status === 401 ? '，登录会话无效' : ''}` };
+      return { ok: false, stop, reason: `HTTP ${response.status}${response.status === 401 ? t('，登录会话无效', ': invalid ChatGPT session') : ''}` };
     } catch (error) {
       console.warn('[GPT Batch Manager] request failed', error);
-      return { ok: false, stop: true, reason: '网络请求失败，请检查扩展控制台' };
+      return { ok: false, stop: true, reason: t('网络请求失败，请检查扩展控制台', 'Network request failed. Check the extension console.') };
     }
 
     function send(token) {
@@ -1058,7 +1074,8 @@
   }
 
   function actionLabel(action) {
-    return { archive: '归档', move: '移动', delete: '删除' }[action] || action;
+    return { archive: t('归档', 'Archive'), move: t('移动', 'Move'),
+      export: t('导出', 'Export'), delete: t('删除', 'Delete') }[action] || action;
   }
 
   function notify(message) {
@@ -1115,10 +1132,40 @@
 
   function init() {
     ensureToolbar();
+    const storage = globalThis.chrome?.storage;
+    if (storage?.local) {
+      let changed = false;
+      const receiveLanguage = (value) => {
+        changed = true;
+        applyLanguage(value);
+      };
+      storage.onChanged.addListener((changes, area) => {
+        if (area !== 'local' || !changes.language) return;
+        receiveLanguage(changes.language.newValue);
+      });
+      chrome.runtime?.onMessage?.addListener((message, sender, respond) => {
+        if (sender.id !== chrome.runtime.id || message?.type !== 'gbm:set-language') return;
+        receiveLanguage(message.language);
+        respond({ language });
+      });
+      storage.local.get('language').then(({ language: saved }) => {
+        if (!changed) applyLanguage(saved);
+      }).catch(() => {});
+    }
     attachSidebarObserver();
     // 只用于发现 ChatGPT 是否重建了左侧栏，不再对每次页面变化执行完整扫描。
     state.bodyObserver = new MutationObserver(scheduleSidebarCheck);
     state.bodyObserver.observe(document.body, { childList: true, subtree: true });
+  }
+
+  function applyLanguage(saved) {
+    const next = saved === 'en' ? 'en' : 'zh-CN';
+    if (next === language) return;
+    language = next;
+    updateToolbarLabels(ensureToolbar());
+    if (!state.busy && !state.selectController) setStatus('');
+    refresh();
+    if (state.sidebar?.isConnected) scheduleDecorate();
   }
 
   init();

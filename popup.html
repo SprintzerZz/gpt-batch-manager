@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<title>GPT Batch Manager</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { box-sizing: border-box; width: 272px; margin: 0; padding: 16px; background: light-dark(#f5f8f7, #17211e); color: light-dark(#142620, #edf8f3); font: 13px system-ui, sans-serif; }
+  header { display: flex; align-items: center; gap: 10px; }
+  header img { border-radius: 9px; }
+  h1 { margin: 0; font-size: 15px; }
+  fieldset { margin: 16px 0 0; padding: 0; border: 0; min-width: 0; }
+  legend { margin-bottom: 8px; padding: 0; font-size: 12px; font-weight: 600; }
+  label { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 6px; padding: 9px 11px; border: 1px solid light-dark(#dbe6e1, #41534b); border-radius: 9px; background: light-dark(#fff, #22302a); cursor: pointer; }
+  label:has(:checked) { border-color: #159371; background: light-dark(#e7f7ef, #153b31); }
+  input { margin: 0; accent-color: #138567; }
+  #status { margin: 6px 0 0; color: light-dark(#466057, #b6ccc2); font-size: 12px; }
+  #status:empty { display: none; }
+</style>
+<header>
+  <img src="icons/icon-48.png" width="32" height="32" alt="">
+  <h1>GPT Batch Manager</h1>
+</header>
+<fieldset id="language" disabled>
+  <legend id="language-title">界面语言</legend>
+  <label>简体中文 <input type="radio" name="language" value="zh-CN"></label>
+  <label>English <input type="radio" name="language" value="en"></label>
+</fieldset>
+<p id="status" role="status"></p>
+<script src="popup.js"></script>
+</html>

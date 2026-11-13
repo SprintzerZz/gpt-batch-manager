@@ -36,6 +36,8 @@ Chrome 用户可直接从 [Chrome 网上应用店](https://chromewebstore.google
 
 ### 使用
 
+点击浏览器工具栏中的 GPT Batch Manager 图标，可以在简体中文和 English 之间切换。语言设置会保存在当前浏览器中。
+
 勾选侧栏中的对话，或点击“全选未归档”，然后选择“归档”“移动”“导出”或“删除”。点击“移动”后，在弹窗中搜索并选择左侧项目；本次批量移动都会使用该项目。删除前会再次确认；确认后请保持 ChatGPT 页面打开，等待后台删除结果和失败项恢复。全选读取期间会显示进度，可点击 × 取消。
 
 ### 注意
@@ -67,6 +69,8 @@ Chrome users can install directly from the [Chrome Web Store](https://chromewebs
 4. Open or refresh [ChatGPT](https://chatgpt.com/).
 
 ### Use
+
+Click the GPT Batch Manager toolbar icon to switch between Simplified Chinese and English. The browser remembers your choice.
 
 Select conversations in the sidebar, or click **全选未归档** (Select all unarchived), then choose **归档** (Archive), **移动** (Move), **导出** (Export), or **删除** (Delete). After clicking Move, choose a destination in the project picker; the whole batch uses that project. Deletion requires confirmation; keep the ChatGPT page open until the background result and any rollback appear. The select-all operation shows progress and can be cancelled with ×.
 

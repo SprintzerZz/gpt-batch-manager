@@ -4,6 +4,8 @@ Last updated: 2026-10-25
 
 ## 中文
 
+扩展使用浏览器的本地扩展存储保存界面语言偏好，不会上传该设置。
+
 GPT Batch Manager 仅在用户打开的 ChatGPT 网页上运行，用于显示项目标签，以及批量选择、归档、删除、移动和导出对话。
 
 - 扩展会读取 ChatGPT 侧栏中的对话标题、链接和 ID。项目折叠且“最近”中的对话缺少项目标签时，会按需从当前 ChatGPT 网站读取项目名称及对话 ID，不请求对话正文。使用“全选未归档”时，也会通过当前 ChatGPT 网站读取对话列表。
@@ -17,6 +19,8 @@ GPT Batch Manager 仅在用户打开的 ChatGPT 网页上运行，用于显示�
 隐私问题可通过 [GitHub Issues](https://github.com/SprintzerZz/gpt-batch-manager/issues) 联系项目维护者。
 
 ## English
+
+The extension saves the interface language preference in the browser's local extension storage. It does not upload this setting.
 
 GPT Batch Manager runs only on ChatGPT pages opened by the user. It shows project labels and lets the user select, archive, delete, move, and export conversations in batches.
 
