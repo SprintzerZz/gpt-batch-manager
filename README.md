@@ -14,16 +14,15 @@
 
 ## 中文
 
-轻量化的 Chrome / Edge 扩展，在 ChatGPT 网页侧栏选择并批量管理对话。
+GPT Batch Manager 是一款轻量的 Chrome / Edge 扩展。在 ChatGPT 侧栏勾选多条对话，即可批量归档、删除、移动到项目或导出列表。
 
 ### 功能
 
-- 在已显示的对话前添加复选框。
-- 项目内对话及“最近”中能识别出项目归属的同一对话，在复选框后显示彩色项目标签；较长项目名会换行完整显示。项目折叠时也会按需读取项目对话列表，同一项目在展开或折叠后颜色一致，未归属项目的对话不显示标签。
-- “全选未归档”按页读取账号中的未归档对话，包括尚未出现在侧栏的对话；读取不完整时不会提交部分选择。
-- 批量删除、归档，最多同时处理 4 个请求。确认删除后先从侧栏隐藏所选对话，后台请求失败时恢复对应条目及勾选；归档在成功后隐藏。
-- 将选中对话的标题、ID 和链接导出为 JSON。导出文件**不包含对话正文**。
-- 点击“移动”后弹出左侧项目选择框，识别项目链接或新版文件夹行，选定一个项目用于本次批量移动。移动时 ChatGPT 自身的项目菜单可能短暂出现，扩展会自动选择目标并核对侧栏结果。移动仅支持已显示在侧栏的对话；网页不支持的对话会保留勾选并显示原因。
+- **批量选择**：逐条勾选，或使用「全选未归档」，一次选中所有未归档对话，包括尚未加载到侧栏的条目。
+- **归档与删除**：批量归档或删除所选对话。确认删除后，对话会先从侧栏隐藏，删除失败的条目会恢复显示并保留勾选。
+- **整理项目**：将侧栏中支持移动的对话批量移入已有项目，通过彩色标签辨认对话所属项目。
+- **导出列表**：将所选对话的标题、链接和 ID 保存为 JSON，文件不包含对话正文。
+- **切换语言**：点击工具栏中的扩展图标，在简体中文和 English 之间切换。浏览器会记住你的选择。
 
 ### 安装
 
@@ -44,20 +43,19 @@ Chrome 用户可直接从 [Chrome 网上应用店](https://chromewebstore.google
 
 删除、归档、列出全部对话和折叠项目的标签识别使用 ChatGPT 网页的非公开接口，可能随网站更新而失效；移动依赖网页菜单或拖放结构。折叠项目标签查询若返回 401/403，本页会停止重试；无法直接识别项目归属的“最近”对话可能不显示标签。标签识别使用项目名称和对话 ID，不请求对话正文。扩展只向当前 ChatGPT 网站发送请求，登录令牌仅保存在当前页面的内存中。删除是不可撤销的操作，建议先用少量不需要的对话测试。
 
-[隐私政策](PRIVACY.md)
+扩展使用当前 ChatGPT 登录状态，无需另行注册。对话数据不会发送到开发者服务器。[隐私政策](PRIVACY.md)
 
 ## English
 
-A lightweight Chrome / Edge extension for selecting and managing ChatGPT conversations in batches from the web sidebar.
+GPT Batch Manager is a lightweight Chrome and Edge extension for organizing ChatGPT conversations. Select multiple chats directly in the sidebar to archive or delete them, move them to a project, or export a list.
 
 ### Features
 
-- Adds a checkbox to each conversation rendered in the sidebar.
-- Shows a color-coded project label after the checkbox for chats in projects and matching chats under Recents, including when projects are collapsed. Long project names wrap instead of being truncated, and each project keeps the same color when expanded or collapsed. Non-project chats have no label.
-- **Select all unarchived** paginates through the account's unarchived conversations, including those not yet rendered in the sidebar. An incomplete fetch never becomes a partial “select all.”
-- Deletes or archives in batches with up to four concurrent requests. Confirmed deletions disappear from the sidebar immediately while requests run; failed deletions reappear with their checkboxes selected. Archives disappear after success.
-- Exports selected conversation titles, IDs, and URLs as JSON. The export **does not include message content**.
-- Move opens a picker of projects from the sidebar, including newer folder-style project rows. Choose one destination for the batch. ChatGPT's own project menu may appear briefly while the extension selects the destination and checks the sidebar result. Only chats rendered in the sidebar and eligible for moving are supported; failed items remain selected.
+- **Select chats in bulk**. Pick individual conversations or use **Select all unarchived** to include chats that haven’t loaded in the sidebar yet.
+- **Archive or delete chats**. After you confirm deletion, selected chats disappear from the sidebar. If a deletion fails, the chat reappears and stays selected.
+- **Organize with projects**. Move eligible chats visible in the sidebar into an existing project. Color-coded labels show project membership where it can be identified.
+- **Export a chat list**. Save titles, links, and IDs as a JSON file. Message content is excluded.
+- **Switch languages**. Click the extension icon in your browser toolbar to choose English or Simplified Chinese. Your browser remembers your choice.
 
 ### Install
 
@@ -78,4 +76,4 @@ Select conversations in the sidebar, or click **全选未归档** (Select all un
 
 Listing, deleting, archiving, and resolving labels for collapsed projects rely on ChatGPT's undocumented web endpoints and may break when the site changes. If collapsed-project label lookup returns 401/403, the extension stops retrying on that page; Recents chats whose project cannot be inferred locally may have no label. Moving relies on the site's menu or drag-and-drop structure. Label lookup uses project names and conversation IDs, without requesting message content. Requests go only to the current ChatGPT site; the session token stays in page memory. Deletion cannot be undone, so test with a few expendable conversations first.
 
-[Privacy Policy](PRIVACY.md)
+The extension uses your existing ChatGPT sign-in and requires no separate account. Conversation data is never sent to the developer’s servers. [Privacy Policy](PRIVACY.md)
