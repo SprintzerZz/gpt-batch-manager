@@ -340,18 +340,6 @@
 .gbm-conversation {
   position: relative;
 }
-:root[data-gbm-style] .gbm-selected-row {
-  background-color: var(--gbm-accent-row) !important;
-  box-shadow: inset 3px 0 0 var(--gbm-accent);
-  border-radius: var(--gbm-btn-radius);
-  transition: background-color 0.14s ease, box-shadow 0.14s ease;
-}
-:root[data-gbm-style] a.gbm-conversation.gbm-selected-row {
-  padding-top: 5px;
-  padding-bottom: 5px;
-  padding-left: 6px;
-  padding-right: 6px;
-}
 .gbm-hidden { display: none !important; }
 
 :root[data-gbm-style] .gbm-checkbox,
