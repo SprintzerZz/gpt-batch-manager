@@ -2,6 +2,10 @@
   'use strict';
 
   let language = 'zh-CN';
+  let uiStyle = 'retro';
+  let uiAccent = 'paper';
+  const RETRO_ACCENTS = ['paper', 'mac', 'amber'];
+  const MODERN_ACCENTS = ['mono', 'blue', 'indigo'];
   const t = (chinese, english) => language === 'en' ? english : chinese;
 
   const state = {
@@ -9,6 +13,7 @@
     toolbar: null,
     bodyObserver: null,
     sidebarObserver: null,
+    themeObserver: null,
     sidebar: null,
     decorateTimer: null,
     sidebarTimer: null,
@@ -55,18 +60,20 @@
     const toolbar = document.createElement('div');
     toolbar.className = 'gbm-toolbar';
     toolbar.innerHTML = `
-      <div class="gbm-toolbar__top">
-        <label class="gbm-select-all"><input type="checkbox" data-gbm-select-all> <span data-gbm-select-label></span></label>
-        <span class="gbm-count"></span>
-        <button class="gbm-close" type="button">×</button>
-      </div>
-      <div class="gbm-actions">
-        <button type="button" data-gbm-action="archive"></button>
-        <button type="button" data-gbm-action="move"></button>
-        <button type="button" data-gbm-action="export"></button>
-        <button type="button" class="gbm-danger" data-gbm-action="delete"></button>
-      </div>
-      <div class="gbm-status" role="status" aria-live="polite"></div>`;
+      <div class="gbm-toolbar__body">
+        <div class="gbm-toolbar__top">
+          <label class="gbm-select-all"><input type="checkbox" data-gbm-select-all> <span data-gbm-select-label></span></label>
+          <span class="gbm-count"></span>
+          <button class="gbm-close" type="button" aria-label="Close"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+        </div>
+        <div class="gbm-actions">
+          <button type="button" data-gbm-action="archive"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></svg><span data-gbm-action-label></span></button>
+          <button type="button" data-gbm-action="move"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/><path d="M12 10v6"/><path d="m15 13-3 3-3-3"/></svg><span data-gbm-action-label></span></button>
+          <button type="button" data-gbm-action="export"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg><span data-gbm-action-label></span></button>
+          <button type="button" class="gbm-danger" data-gbm-action="delete"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg><span data-gbm-action-label></span></button>
+        </div>
+        <div class="gbm-status" role="status" aria-live="polite"></div>
+      </div>`;
 
     toolbar.querySelector('[data-gbm-select-all]').addEventListener('change', (event) => {
       if (event.target.checked) void selectAllConversations();
@@ -85,9 +92,13 @@
 
   function updateToolbarLabels(toolbar) {
     toolbar.querySelector('[data-gbm-select-label]').textContent = t('全选未归档', 'Select all unarchived');
-    toolbar.querySelector('.gbm-close').title = t('取消选择', 'Clear selection');
+    const closeBtn = toolbar.querySelector('.gbm-close');
+    closeBtn.title = t('取消选择', 'Clear selection');
+    closeBtn.setAttribute('aria-label', t('取消选择', 'Clear selection'));
     toolbar.querySelectorAll('[data-gbm-action]').forEach((button) => {
-      button.textContent = actionLabel(button.dataset.gbmAction);
+      const label = button.querySelector('[data-gbm-action-label]');
+      if (label) label.textContent = actionLabel(button.dataset.gbmAction);
+      else button.textContent = actionLabel(button.dataset.gbmAction);
     });
   }
 
@@ -144,9 +155,10 @@
         return;
       }
       updateProjectTag(link, directProjects.get(link) || state.projectById.get(id));
-      if (link.dataset.gbmReady) {
-        const box = link.querySelector('.gbm-checkbox');
-        if (box) box.title = t('选择此对话', 'Select this conversation');
+      const existingBox = link.querySelector('.gbm-checkbox');
+      if (link.dataset.gbmReady && existingBox) {
+        existingBox.title = t('选择此对话', 'Select this conversation');
+        existingBox.checked = state.selected.has(id);
         return;
       }
       link.dataset.gbmReady = '1';
@@ -155,6 +167,8 @@
       box.className = 'gbm-checkbox';
       box.title = t('选择此对话', 'Select this conversation');
       box.checked = state.selected.has(id);
+      box.addEventListener('pointerdown', (event) => event.stopPropagation());
+      box.addEventListener('mousedown', (event) => event.stopPropagation());
       box.addEventListener('click', (event) => event.stopPropagation());
       box.addEventListener('change', () => {
         setStatus('');
@@ -287,9 +301,10 @@
     tag.dataset.gbmProject = key;
     tag.textContent = project.name;
     const hue = projectColor(project.name);
-    tag.style.backgroundColor = `hsl(${hue} 74% 88%)`;
-    tag.style.color = `hsl(${hue} 55% 26%)`;
-    tag.style.borderColor = `hsl(${hue} 50% 74%)`;
+    tag.style.setProperty('--gbm-tag-h', String(hue));
+    tag.style.backgroundColor = `hsl(${hue} 70% 56% / 0.14)`;
+    tag.style.removeProperty('color');
+    tag.style.removeProperty('border-color');
   }
 
   function scheduleProjectLookup(recentLinks) {
@@ -407,6 +422,8 @@
       const selected = state.selected.has(conversationId(link));
       box.checked = selected;
       link.classList.toggle('gbm-selected', selected);
+      const row = conversationRow(link);
+      if (row) row.classList.toggle('gbm-selected-row', selected);
     });
     const selectAll = toolbar.querySelector('[data-gbm-select-all]');
     const allSelected = state.knownAllIds !== null && state.knownAllIds.size > 0 &&
@@ -829,13 +846,25 @@
       overlay.setAttribute('aria-modal', 'true');
       const panel = document.createElement('div');
       panel.className = 'gbm-project-picker__panel';
+      const header = document.createElement('div');
+      header.className = 'gbm-project-picker__header';
       const title = document.createElement('div');
       title.className = 'gbm-project-picker__title';
       title.textContent = t('移动到项目', 'Move to project');
+      const kbd = document.createElement('span');
+      kbd.className = 'gbm-project-picker__kbd';
+      kbd.textContent = 'ESC';
+      header.append(title, kbd);
+
+      const searchWrap = document.createElement('div');
+      searchWrap.className = 'gbm-project-picker__search-wrap';
+      searchWrap.innerHTML = '<svg class="gbm-project-picker__search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>';
       const search = document.createElement('input');
       search.type = 'search';
       search.placeholder = t('搜索左侧项目', 'Search sidebar projects');
       search.setAttribute('aria-label', t('搜索项目', 'Search projects'));
+      searchWrap.appendChild(search);
+
       const list = document.createElement('div');
       list.className = 'gbm-project-picker__list';
       if (!projects.length) {
@@ -847,16 +876,25 @@
       const buttons = projects.map((project) => {
         const button = document.createElement('button');
         button.type = 'button';
-        button.textContent = project.name;
+        const dot = document.createElement('span');
+        dot.className = 'gbm-project-dot';
+        dot.style.setProperty('--gbm-tag-h', String(projectColor(project.name)));
+        dot.setAttribute('aria-hidden', 'true');
+        const label = document.createElement('span');
+        label.textContent = project.name;
+        button.append(dot, label);
         button.addEventListener('click', () => finish(project));
         list.appendChild(button);
         return { button, project };
       });
+      const footer = document.createElement('div');
+      footer.className = 'gbm-project-picker__footer';
       const cancel = document.createElement('button');
       cancel.type = 'button';
       cancel.className = 'gbm-project-picker__cancel';
       cancel.textContent = projects.length ? t('取消', 'Cancel') : t('关闭', 'Close');
       cancel.addEventListener('click', () => finish(null));
+      footer.appendChild(cancel);
       search.addEventListener('input', () => {
         const query = search.value.trim().toLocaleLowerCase();
         buttons.forEach(({ button, project }) => {
@@ -873,7 +911,7 @@
           : t('未识别到左侧项目；请展开“项目”列表并刷新页面', 'No sidebar projects found. Expand Projects and refresh the page.') });
       }
       document.addEventListener('keydown', onKeydown, true);
-      panel.append(title, search, list, cancel);
+      panel.append(header, searchWrap, list, footer);
       overlay.appendChild(panel);
       document.body.appendChild(overlay);
       if (projects.length) search.focus();
@@ -913,6 +951,8 @@
       const box = link.querySelector('.gbm-checkbox');
       if (box) box.checked = false;
       link.classList.remove('gbm-selected');
+      const row = conversationRow(link);
+      if (row) row.classList.remove('gbm-selected-row');
     });
     refresh();
   }
@@ -1081,9 +1121,16 @@
   function notify(message) {
     const toast = document.createElement('div');
     toast.className = 'gbm-toast';
-    toast.textContent = message;
+    toast.innerHTML = '<span class="gbm-toast__icon" aria-hidden="true"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>';
+    const text = document.createElement('span');
+    text.textContent = message;
+    toast.appendChild(text);
     document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), 2600);
+    requestAnimationFrame(() => toast.classList.add('gbm-toast--visible'));
+    setTimeout(() => {
+      toast.classList.remove('gbm-toast--visible');
+      setTimeout(() => toast.remove(), 220);
+    }, 2600);
   }
 
   function setStatus(message) {
@@ -1130,26 +1177,78 @@
     state.sidebarTimer = setTimeout(attachSidebarObserver, 50);
   }
 
+  function detectColorScheme() {
+    const root = document.documentElement;
+    if (root.classList.contains('dark') || root.dataset.theme === 'dark') return 'dark';
+    if (root.classList.contains('light') || root.dataset.theme === 'light') return 'light';
+    const scheme = getComputedStyle(root).colorScheme || '';
+    if (scheme.includes('dark') && !scheme.includes('light')) return 'dark';
+    if (scheme.includes('light') && !scheme.includes('dark')) return 'light';
+    return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+
+  function syncColorScheme() {
+    const next = detectColorScheme();
+    if (document.documentElement.dataset.gbmTheme !== next) {
+      document.documentElement.dataset.gbmTheme = next;
+    }
+  }
+
+  function applyAppearance(nextStyle, nextAccent) {
+    if (nextStyle !== undefined) {
+      uiStyle = nextStyle === 'modern' ? 'modern' : 'retro';
+    }
+    const allowed = uiStyle === 'modern' ? MODERN_ACCENTS : RETRO_ACCENTS;
+    const candidate = nextAccent !== undefined ? nextAccent : uiAccent;
+    uiAccent = allowed.includes(candidate) ? candidate : allowed[0];
+    document.documentElement.dataset.gbmStyle = uiStyle;
+    document.documentElement.dataset.gbmAccent = uiAccent;
+  }
+
   function init() {
+    applyAppearance(uiStyle, uiAccent);
+    syncColorScheme();
+    state.themeObserver = new MutationObserver(syncColorScheme);
+    state.themeObserver.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class', 'style', 'data-theme']
+    });
+    window.matchMedia?.('(prefers-color-scheme: dark)').addEventListener?.('change', syncColorScheme);
+
     ensureToolbar();
     const storage = globalThis.chrome?.storage;
     if (storage?.local) {
       let changed = false;
-      const receiveLanguage = (value) => {
+      const receiveSettings = (patch = {}) => {
         changed = true;
-        applyLanguage(value);
+        if (patch.language !== undefined) applyLanguage(patch.language);
+        if (patch.uiStyle !== undefined || patch.uiAccent !== undefined) {
+          applyAppearance(patch.uiStyle, patch.uiAccent);
+        }
       };
       storage.onChanged.addListener((changes, area) => {
-        if (area !== 'local' || !changes.language) return;
-        receiveLanguage(changes.language.newValue);
+        if (area !== 'local') return;
+        const patch = {};
+        if (changes.language) patch.language = changes.language.newValue;
+        if (changes.uiStyle) patch.uiStyle = changes.uiStyle.newValue;
+        if (changes.uiAccent) patch.uiAccent = changes.uiAccent.newValue;
+        if (Object.keys(patch).length) receiveSettings(patch);
       });
       chrome.runtime?.onMessage?.addListener((message, sender, respond) => {
-        if (sender.id !== chrome.runtime.id || message?.type !== 'gbm:set-language') return;
-        receiveLanguage(message.language);
-        respond({ language });
+        if (sender.id !== chrome.runtime.id) return;
+        if (message?.type === 'gbm:set-language') {
+          receiveSettings({ language: message.language });
+          respond({ ok: true, language });
+        } else if (message?.type === 'gbm:set-settings') {
+          receiveSettings(message);
+          respond({ ok: true, language, uiStyle, uiAccent });
+        }
       });
-      storage.local.get('language').then(({ language: saved }) => {
-        if (!changed) applyLanguage(saved);
+      storage.local.get(['language', 'uiStyle', 'uiAccent']).then((stored) => {
+        if (!changed) {
+          applyAppearance(stored.uiStyle, stored.uiAccent);
+          applyLanguage(stored.language);
+        }
       }).catch(() => {});
     }
     attachSidebarObserver();

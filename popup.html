@@ -1,30 +1,524 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-gbm-style="retro" data-gbm-accent="paper">
+<head>
 <meta charset="utf-8">
 <title>GPT Batch Manager</title>
 <style>
-  :root { color-scheme: light dark; }
-  body { box-sizing: border-box; width: 272px; margin: 0; padding: 16px; background: light-dark(#f5f8f7, #17211e); color: light-dark(#142620, #edf8f3); font: 13px system-ui, sans-serif; }
-  header { display: flex; align-items: center; gap: 10px; }
-  header img { border-radius: 9px; }
-  h1 { margin: 0; font-size: 15px; }
-  fieldset { margin: 16px 0 0; padding: 0; border: 0; min-width: 0; }
-  legend { margin-bottom: 8px; padding: 0; font-size: 12px; font-weight: 600; }
-  label { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 6px; padding: 9px 11px; border: 1px solid light-dark(#dbe6e1, #41534b); border-radius: 9px; background: light-dark(#fff, #22302a); cursor: pointer; }
-  label:has(:checked) { border-color: #159371; background: light-dark(#e7f7ef, #153b31); }
-  input { margin: 0; accent-color: #138567; }
-  #status { margin: 6px 0 0; color: light-dark(#466057, #b6ccc2); font-size: 12px; }
-  #status:empty { display: none; }
+  :root {
+    color-scheme: light dark;
+    --p-font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", sans-serif;
+    --p-font-serif: "Georgia", "Songti SC", "Noto Serif SC", "STSong", serif;
+    --p-font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --p-font-title: var(--p-font-serif);
+
+    /* Default: Retro + Paper + Light */
+    --p-bg: #f7f2e7;
+    --p-surface: #efe7d6;
+    --p-surface-hover: #e5dac4;
+    --p-text: #2a2118;
+    --p-muted: #766655;
+    --p-border: #d5c7b2;
+    --p-border-strong: #b8a58b;
+    --p-divider-style: dashed;
+    --p-radius: 10px;
+    --p-card-radius: 7px;
+    --p-check-radius: 3px;
+    --p-btn-shadow: 0 1.5px 0 rgba(42, 33, 24, 0.14);
+
+    --p-accent: #b44b2c;
+    --p-accent-fg: #fdf9f3;
+    --p-accent-soft: rgba(180, 75, 44, 0.11);
+    --p-accent-border: #b44b2c;
+    --p-accent-glow: transparent;
+  }
+
+  /* =========================================================================
+     RETRO 1: PAPER (纸墨档案) — Dark
+     ========================================================================= */
+  @media (prefers-color-scheme: dark) {
+    :root[data-gbm-style="retro"][data-gbm-accent="paper"] {
+      --p-bg: #231e1a;
+      --p-surface: #2d2621;
+      --p-surface-hover: #382f29;
+      --p-text: #f3eadc;
+      --p-muted: #b5a693;
+      --p-border: #4a3f35;
+      --p-border-strong: #68584a;
+      --p-btn-shadow: 0 1.5px 0 rgba(0, 0, 0, 0.42);
+      --p-accent: #d47a4a;
+      --p-accent-fg: #1c1612;
+      --p-accent-soft: rgba(212, 122, 74, 0.16);
+      --p-accent-border: #d47a4a;
+    }
+  }
+
+  /* =========================================================================
+     RETRO 2: MAC (经典桌面) — Unified Paper Layout, Classic Blue Palette
+     ========================================================================= */
+  :root[data-gbm-style="retro"][data-gbm-accent="mac"] {
+    --p-bg: #f1efe9;
+    --p-surface: #e7e4dc;
+    --p-surface-hover: #dcd8cd;
+    --p-text: #1c1b18;
+    --p-muted: #646056;
+    --p-border: #cbc5b8;
+    --p-border-strong: #aba494;
+    --p-btn-shadow: 0 1.5px 0 rgba(28, 27, 24, 0.14);
+    --p-accent: #2457c5;
+    --p-accent-fg: #ffffff;
+    --p-accent-soft: rgba(36, 87, 197, 0.11);
+    --p-accent-border: #2457c5;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root[data-gbm-style="retro"][data-gbm-accent="mac"] {
+      --p-bg: #222220;
+      --p-surface: #2c2b28;
+      --p-surface-hover: #373632;
+      --p-text: #f2efe9;
+      --p-muted: #a9a499;
+      --p-border: #47453f;
+      --p-border-strong: #636058;
+      --p-btn-shadow: 0 1.5px 0 rgba(0, 0, 0, 0.42);
+      --p-accent: #5b8def;
+      --p-accent-fg: #ffffff;
+      --p-accent-soft: rgba(91, 141, 239, 0.17);
+      --p-accent-border: #5b8def;
+    }
+  }
+
+  /* =========================================================================
+     RETRO 3: AMBER (琥珀仪器) — Unified Paper Layout, Warm Amber Palette
+     ========================================================================= */
+  :root[data-gbm-style="retro"][data-gbm-accent="amber"] {
+    --p-bg: #faf4e6;
+    --p-surface: #f1e6cf;
+    --p-surface-hover: #e7d8b8;
+    --p-text: #2e2212;
+    --p-muted: #7d6747;
+    --p-border: #d8bc8e;
+    --p-border-strong: #bd985d;
+    --p-btn-shadow: 0 1.5px 0 rgba(46, 34, 18, 0.14);
+    --p-accent: #b87018;
+    --p-accent-fg: #fffaf0;
+    --p-accent-soft: rgba(184, 112, 24, 0.12);
+    --p-accent-border: #b87018;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root[data-gbm-style="retro"][data-gbm-accent="amber"] {
+      --p-bg: #1b1713;
+      --p-surface: #251f18;
+      --p-surface-hover: #31281f;
+      --p-text: #f7deb8;
+      --p-muted: #a9906e;
+      --p-border: rgba(235, 168, 76, 0.28);
+      --p-border-strong: rgba(235, 168, 76, 0.48);
+      --p-btn-shadow: 0 1.5px 0 rgba(0, 0, 0, 0.45);
+      --p-accent: #eba84c;
+      --p-accent-fg: #17130d;
+      --p-accent-soft: rgba(235, 168, 76, 0.16);
+      --p-accent-border: #eba84c;
+    }
+  }
+
+  /* =========================================================================
+     MODERN: BASE (Light & Dark) + MONO / BLUE / INDIGO
+     ========================================================================= */
+  :root[data-gbm-style="modern"] {
+    --p-font-title: var(--p-font-sans);
+    --p-bg: #f8f9fb;
+    --p-surface: #ffffff;
+    --p-surface-hover: #f1f3f6;
+    --p-text: #111113;
+    --p-muted: #666670;
+    --p-border: rgba(0, 0, 0, 0.1);
+    --p-border-strong: rgba(0, 0, 0, 0.18);
+    --p-divider-style: solid;
+    --p-radius: 14px;
+    --p-card-radius: 10px;
+    --p-check-radius: 999px;
+    --p-btn-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+
+    /* Modern Default: Mono (Light) */
+    --p-accent: #18181b;
+    --p-accent-fg: #ffffff;
+    --p-accent-soft: rgba(24, 24, 27, 0.08);
+    --p-accent-border: rgba(24, 24, 27, 0.36);
+    --p-accent-glow: rgba(0, 0, 0, 0.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root[data-gbm-style="modern"] {
+      --p-bg: #18181b;
+      --p-surface: #232327;
+      --p-surface-hover: #2d2d33;
+      --p-text: #f4f4f5;
+      --p-muted: #a1a1aa;
+      --p-border: rgba(255, 255, 255, 0.11);
+      --p-border-strong: rgba(255, 255, 255, 0.18);
+      --p-btn-shadow: 0 2px 8px rgba(0, 0, 0, 0.24);
+
+      /* Modern Default: Mono (Dark) */
+      --p-accent: #f4f4f5;
+      --p-accent-fg: #111113;
+      --p-accent-soft: rgba(244, 244, 245, 0.12);
+      --p-accent-border: rgba(244, 244, 245, 0.36);
+      --p-accent-glow: rgba(255, 255, 255, 0.1);
+    }
+  }
+
+  /* Modern: Tech Blue */
+  :root[data-gbm-style="modern"][data-gbm-accent="blue"] {
+    --p-accent: #2563eb;
+    --p-accent-fg: #ffffff;
+    --p-accent-soft: rgba(37, 99, 235, 0.1);
+    --p-accent-border: rgba(37, 99, 235, 0.42);
+    --p-accent-glow: rgba(37, 99, 235, 0.14);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root[data-gbm-style="modern"][data-gbm-accent="blue"] {
+      --p-accent: #3b82f6;
+      --p-accent-fg: #ffffff;
+      --p-accent-soft: rgba(59, 130, 246, 0.18);
+      --p-accent-border: rgba(96, 165, 250, 0.45);
+      --p-accent-glow: rgba(59, 130, 246, 0.22);
+    }
+  }
+
+  /* Modern: Quiet Indigo */
+  :root[data-gbm-style="modern"][data-gbm-accent="indigo"] {
+    --p-accent: #4f46e5;
+    --p-accent-fg: #ffffff;
+    --p-accent-soft: rgba(79, 70, 229, 0.1);
+    --p-accent-border: rgba(79, 70, 229, 0.42);
+    --p-accent-glow: rgba(79, 70, 229, 0.15);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root[data-gbm-style="modern"][data-gbm-accent="indigo"] {
+      --p-accent: #6366f1;
+      --p-accent-fg: #ffffff;
+      --p-accent-soft: rgba(99, 102, 241, 0.19);
+      --p-accent-border: rgba(129, 140, 248, 0.46);
+      --p-accent-glow: rgba(99, 102, 241, 0.24);
+    }
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    width: 314px;
+    margin: 0;
+    background: var(--p-bg);
+    color: var(--p-text);
+    font: 13px/1.4 var(--p-font-sans);
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  :root[data-gbm-style="modern"] body::before {
+    content: "";
+    position: fixed;
+    top: -48px;
+    right: -40px;
+    width: 150px;
+    height: 150px;
+    background: radial-gradient(circle, var(--p-accent-glow) 0%, transparent 72%);
+    pointer-events: none;
+  }
+
+  .wrap { padding: 14px 15px 15px; position: relative; }
+
+  header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding-bottom: 12px;
+    border-bottom: 1px var(--p-divider-style) var(--p-border);
+  }
+  .brand-mark {
+    width: 34px;
+    height: 34px;
+    border-radius: var(--p-card-radius);
+    background: var(--p-accent);
+    color: var(--p-accent-fg);
+    border: 1px solid var(--p-border-strong);
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    box-shadow: var(--p-btn-shadow);
+  }
+  .brand-text { min-width: 0; flex: 1; }
+  .brand-row { display: flex; align-items: center; gap: 6px; }
+  h1 {
+    margin: 0;
+    font-family: var(--p-font-title);
+    font-size: 14.5px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .version-tag {
+    font: 600 10px/1 var(--p-font-mono);
+    padding: 2px 5px;
+    border-radius: var(--p-check-radius);
+    background: var(--p-accent-soft);
+    color: var(--p-accent);
+    border: 1px solid var(--p-accent-border);
+  }
+  :root[data-gbm-accent="mono"] .version-tag { color: var(--p-text); }
+  .subtitle {
+    margin: 2px 0 0;
+    font-size: 11px;
+    color: var(--p-muted);
+  }
+
+  fieldset {
+    margin: 12px 0 0;
+    padding: 0;
+    border: 0;
+    min-width: 0;
+  }
+  legend {
+    margin-bottom: 6px;
+    padding: 0;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--p-muted);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  :root[data-gbm-style="retro"] legend { font-family: var(--p-font-mono); }
+
+  .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+
+  .option-card {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    padding: 8px 10px;
+    border: 1.5px solid var(--p-border);
+    border-radius: var(--p-card-radius);
+    background: var(--p-surface);
+    color: var(--p-text);
+    cursor: pointer;
+    box-shadow: var(--p-btn-shadow);
+    transition: background 0.14s ease, border-color 0.14s ease, transform 0.1s ease, box-shadow 0.14s ease;
+    user-select: none;
+  }
+  :root[data-gbm-style="modern"] .option-card { border-width: 1px; }
+  .option-card:hover {
+    background: var(--p-surface-hover);
+    border-color: var(--p-border-strong);
+  }
+  .option-card:has(input:checked) {
+    border-color: var(--p-accent-border);
+    background: var(--p-accent-soft);
+  }
+  .option-card:has(input:focus-visible) {
+    outline: 2px solid var(--p-accent);
+    outline-offset: 2px;
+  }
+  .option-card input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .option-label {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+  .option-title {
+    font-size: 12.5px;
+    font-weight: 600;
+    line-height: 1.25;
+  }
+  .option-sub {
+    font-size: 10.5px;
+    color: var(--p-muted);
+    margin-top: 1px;
+  }
+  .check-dot {
+    width: 15px;
+    height: 15px;
+    border-radius: var(--p-check-radius);
+    border: 1.5px solid var(--p-border-strong);
+    display: inline-grid;
+    place-items: center;
+    flex-shrink: 0;
+    transition: all 0.14s ease;
+  }
+  .option-card:has(input:checked) .check-dot {
+    background: var(--p-accent);
+    border-color: var(--p-accent);
+  }
+  .option-card:has(input:checked) .check-dot::after {
+    content: "";
+    width: 7px;
+    height: 4px;
+    border-left: 1.8px solid var(--p-accent-fg);
+    border-bottom: 1.8px solid var(--p-accent-fg);
+    transform: rotate(-45deg) translate(0.4px, -0.6px);
+  }
+
+  /* Mode-Specific Accent Swatches */
+  .accent-set { display: none; }
+  :root[data-gbm-style="retro"] .accent-set--retro { display: grid; }
+  :root[data-gbm-style="modern"] .accent-set--modern { display: grid; }
+
+  .swatch-card {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 8px 4px 7px;
+    gap: 5px;
+  }
+  .swatch-dot {
+    width: 14px;
+    height: 14px;
+    border-radius: var(--p-check-radius);
+    flex-shrink: 0;
+    border: 1px solid rgba(128, 128, 128, 0.4);
+  }
+  .swatch-dot--paper { background: linear-gradient(135deg, #f3eadc 45%, #b44b2c 55%); }
+  .swatch-dot--mac { background: linear-gradient(135deg, #e5e2d9 45%, #2457c5 55%); }
+  .swatch-dot--amber { background: linear-gradient(135deg, #1b1713 45%, #eba84c 55%); }
+  .swatch-dot--mono { background: linear-gradient(135deg, #18181b 50%, #e4e4e7 50%); }
+  .swatch-dot--blue { background: #2563eb; }
+  .swatch-dot--indigo { background: #4f46e5; }
+  .swatch-card .option-title { font-size: 11.5px; }
+
+  fieldset:disabled { opacity: 0.6; pointer-events: none; }
+
+  .status-bar {
+    margin: 13px 0 0;
+    padding-top: 10px;
+    border-top: 1px var(--p-divider-style) var(--p-border);
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    color: var(--p-muted);
+    font-size: 11.5px;
+  }
+  :root[data-gbm-style="retro"] .status-bar { font-family: var(--p-font-mono); font-size: 11px; }
+  .status-bar:has(#status:empty) { display: none; }
+  .status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: var(--p-check-radius);
+    background: var(--p-accent);
+    flex-shrink: 0;
+  }
+  #status { margin: 0; line-height: 1.35; }
 </style>
-<header>
-  <img src="icons/icon-48.png" width="32" height="32" alt="">
-  <h1>GPT Batch Manager</h1>
-</header>
-<fieldset id="language" disabled>
-  <legend id="language-title">界面语言</legend>
-  <label>简体中文 <input type="radio" name="language" value="zh-CN"></label>
-  <label>English <input type="radio" name="language" value="en"></label>
-</fieldset>
-<p id="status" role="status"></p>
-<script src="popup.js"></script>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="brand-mark" aria-hidden="true">
+        <svg width="20" height="20" viewBox="0 0 128 128" fill="none">
+          <path d="M36 22h41c12 0 21 9 21 21v21c0 12-9 21-21 21H43L30 94V82c-9-3-15-11-15-21V43c0-12 9-21 21-21Z" stroke="currentColor" stroke-width="8" stroke-linejoin="round" opacity=".55"/>
+          <path d="M54 42h38c11 0 19 8 19 19v22c0 11-8 19-19 19H58l-14 10V98c-6-4-10-10-10-18V61c0-11 9-19 20-19Z" fill="currentColor"/>
+          <path d="m52 72 14 13 27-28" stroke="var(--p-accent)" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <div class="brand-text">
+        <div class="brand-row">
+          <h1>GPT Batch Manager</h1>
+          <span class="version-tag">v0.2.29</span>
+        </div>
+        <p class="subtitle" id="subtitle">ChatGPT 轻量批量整理助手</p>
+      </div>
+    </header>
+
+    <fieldset id="style-group" disabled>
+      <legend id="style-title">界面风格</legend>
+      <div class="grid-2">
+        <label class="option-card">
+          <input type="radio" name="uiStyle" value="retro">
+          <span class="option-label">
+            <span class="option-title" id="style-retro-label">复古模式</span>
+            <span class="option-sub" id="style-retro-sub">Retro</span>
+          </span>
+          <span class="check-dot" aria-hidden="true"></span>
+        </label>
+        <label class="option-card">
+          <input type="radio" name="uiStyle" value="modern">
+          <span class="option-label">
+            <span class="option-title" id="style-modern-label">现代模式</span>
+            <span class="option-sub" id="style-modern-sub">Modern</span>
+          </span>
+          <span class="check-dot" aria-hidden="true"></span>
+        </label>
+      </div>
+    </fieldset>
+
+    <fieldset id="accent-group" disabled>
+      <legend id="accent-title">复古配色</legend>
+      <!-- Retro Exclusive Palettes -->
+      <div class="grid-3 accent-set accent-set--retro">
+        <label class="option-card swatch-card">
+          <input type="radio" name="retroAccent" value="paper">
+          <span class="swatch-dot swatch-dot--paper" aria-hidden="true"></span>
+          <span class="option-title" id="accent-paper-label">纸墨档案</span>
+        </label>
+        <label class="option-card swatch-card">
+          <input type="radio" name="retroAccent" value="mac">
+          <span class="swatch-dot swatch-dot--mac" aria-hidden="true"></span>
+          <span class="option-title" id="accent-mac-label">经典桌面</span>
+        </label>
+        <label class="option-card swatch-card">
+          <input type="radio" name="retroAccent" value="amber">
+          <span class="swatch-dot swatch-dot--amber" aria-hidden="true"></span>
+          <span class="option-title" id="accent-amber-label">琥珀仪器</span>
+        </label>
+      </div>
+      <!-- Modern Exclusive Palettes -->
+      <div class="grid-3 accent-set accent-set--modern">
+        <label class="option-card swatch-card">
+          <input type="radio" name="modernAccent" value="mono">
+          <span class="swatch-dot swatch-dot--mono" aria-hidden="true"></span>
+          <span class="option-title" id="accent-mono-label">极简黑白</span>
+        </label>
+        <label class="option-card swatch-card">
+          <input type="radio" name="modernAccent" value="blue">
+          <span class="swatch-dot swatch-dot--blue" aria-hidden="true"></span>
+          <span class="option-title" id="accent-blue-label">科技蓝</span>
+        </label>
+        <label class="option-card swatch-card">
+          <input type="radio" name="modernAccent" value="indigo">
+          <span class="swatch-dot swatch-dot--indigo" aria-hidden="true"></span>
+          <span class="option-title" id="accent-indigo-label">静谧紫</span>
+        </label>
+      </div>
+    </fieldset>
+
+    <fieldset id="language" disabled>
+      <legend id="language-title">界面语言</legend>
+      <div class="grid-2">
+        <label class="option-card">
+          <input type="radio" name="language" value="zh-CN">
+          <span class="option-title">简体中文</span>
+          <span class="check-dot" aria-hidden="true"></span>
+        </label>
+        <label class="option-card">
+          <input type="radio" name="language" value="en">
+          <span class="option-title">English</span>
+          <span class="check-dot" aria-hidden="true"></span>
+        </label>
+      </div>
+    </fieldset>
+
+    <div class="status-bar">
+      <span class="status-dot" aria-hidden="true"></span>
+      <p id="status" role="status"></p>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
 </html>
